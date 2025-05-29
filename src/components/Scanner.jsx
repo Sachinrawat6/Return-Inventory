@@ -4,7 +4,7 @@ import axios from "axios";
 
 const QrScanner = () => {
   const [scannedData, setScannedData] = useState("");
-  const [apiResponse,setApiResponse] = useState([]);
+  const [apiResponse, setApiResponse] = useState([]);
   const [error, setError] = useState("");
   const [cameras, setCameras] = useState([]);
   const [selectedCameraId, setSelectedCameraId] = useState("");
@@ -13,39 +13,40 @@ const QrScanner = () => {
   const html5QrCodeRef = useRef(null);
   const qrRegionId = "qr-reader";
 
-  const API ="https://fastapi.qurvii.com/scan";
+  const API = "https://fastapi.qurvii.com/scan";
 
-
- const postScanData = async(orderId)=>{
-    const response = await axios.post(API,{user_id:6,order_id:parseInt(orderId),user_location_id:139});
+  const postScanData = async (orderId) => {
+    const response = await axios.post(API, {
+      user_id: 6,
+      order_id: parseInt(orderId),
+      user_location_id: 139,
+    });
     const data = response.data.data;
     setApiResponse(data);
- }
+  };
 
+  useEffect(() => {
+    Html5Qrcode.getCameras()
+      .then((devices) => {
+        if (devices.length === 0) {
+          setError("No camera devices found.");
+        } else {
+          const backCam = devices.find(
+            (device) =>
+              device.label.toLowerCase().includes("back") ||
+              device.label.toLowerCase().includes("environment")
+          );
+          const chosenCam = backCam || devices[0]; // fallback to first if no back cam found
+          setCameras([chosenCam]); // limit to just the chosen camera
+          setSelectedCameraId(chosenCam.id);
+        }
+      })
+      .catch((err) => {
+        setError("Camera access error: " + err.message);
+      });
 
-
- useEffect(() => {
-  Html5Qrcode.getCameras()
-    .then((devices) => {
-      if (devices.length === 0) {
-        setError("No camera devices found.");
-      } else {
-        const backCam = devices.find((device) =>
-          device.label.toLowerCase().includes("back") ||
-          device.label.toLowerCase().includes("environment")
-        );
-        const chosenCam = backCam || devices[0]; // fallback to first if no back cam found
-        setCameras([chosenCam]); // limit to just the chosen camera
-        setSelectedCameraId(chosenCam.id);
-      }
-    })
-    .catch((err) => {
-      setError("Camera access error: " + err.message);
-    });
-
-  return () => stopScanner();
-}, []);
-
+    return () => stopScanner();
+  }, []);
 
   useEffect(() => {
     if (mode === "camera" && selectedCameraId) {
@@ -64,8 +65,10 @@ const QrScanner = () => {
         config,
         (decodedText) => {
           setScannedData(decodedText);
+          postScanData(decodedText);
           stopScanner();
         },
+
         () => {}
       )
       .then(() => {
@@ -92,6 +95,7 @@ const QrScanner = () => {
 
   const handleScanAgain = () => {
     setScannedData("");
+    setApiResponse([]);
     setError("");
     if (mode === "camera") {
       startScanner(selectedCameraId);
@@ -120,7 +124,9 @@ const QrScanner = () => {
 
       <div className="mb-4">
         <button
-          className={`px-4 py-2 mr-2 rounded ${mode === "camera" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+          className={`px-4 py-2 mr-2 rounded ${
+            mode === "camera" ? "bg-blue-600 text-white" : "bg-gray-200"
+          }`}
           onClick={() => {
             stopScanner();
             setMode("camera");
@@ -130,7 +136,9 @@ const QrScanner = () => {
           Camera
         </button>
         <button
-          className={`px-4 py-2 rounded ${mode === "upload" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+          className={`px-4 py-2 rounded ${
+            mode === "upload" ? "bg-blue-600 text-white" : "bg-gray-200"
+          }`}
           onClick={() => {
             stopScanner();
             setMode("upload");
@@ -149,8 +157,10 @@ const QrScanner = () => {
 
       {mode === "camera" && !scannedData && (
         <>
-         
-          <div id={qrRegionId} className="w-64 h-64 rounded border border-gray-200 shadow-md mb-4"></div>
+          <div
+            id={qrRegionId}
+            className="w-64 h-64 rounded border border-gray-200  mb-4"
+          ></div>
         </>
       )}
 
@@ -167,68 +177,89 @@ const QrScanner = () => {
       )}
 
       {scannedData && (
-       <div className="bg-white rounded-lg  overflow-hidden border border-gray-100 w-full max-w-md mx-auto mb-6">
-  <div className="bg-blue-50 px-4 py-3 border-b border-blue-100">
-    <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-      <svg 
-        className="w-5 h-5 text-green-500 mr-2" 
-        fill="none" 
-        stroke="currentColor" 
-        viewBox="0 0 24 24" 
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          strokeWidth={2} 
-          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-        />
-      </svg>
-      Scan Successful
-    </h2>
-  </div>
+        <div className="bg-white rounded-lg  overflow-hidden border border-gray-100 w-full max-w-md mx-auto mb-6">
+          <div className="bg-blue-50 px-4 py-3 border-b border-blue-100">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+              <svg
+                className="w-5 h-5 text-green-500 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Scan Successful
+            </h2>
+          </div>
 
-  <div className="p-5">
-    <div className="mb-4">
-      <h3 className="text-sm font-medium text-gray-500 mb-1">Order ID</h3>
-      <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-        <p className="break-all font-mono text-green-600">{scannedData}</p>
-      </div>
-    </div>
+          <div className="p-5">
+            <div className="mb-4">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">
+                Order ID
+              </h3>
+              <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                <p className="break-all font-mono text-green-600">
+                  {scannedData}
+                </p>
+              </div>
+            </div>
 
-    <div className="grid grid-cols-1 gap-4">
-      <div className="bg-gray-50 p-4 rounded-md  border border-gray-200">
-        <h3 className="text-sm font-extrabold text-blue-700  mb-3">Product Details</h3>
-        <dl className="space-y-2">
-          <div className="flex gap-2">
-            <dt className="text-sm text-gray-500">Style Number | </dt>
-            <dd className="text-sm font-medium">{apiResponse.style_number || "-"}</dd>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="bg-gray-50 p-4 rounded-md  border border-gray-200">
+                <h3 className="text-sm font-extrabold text-blue-700  mb-3">
+                  Product Details
+                </h3>
+                <dl className="space-y-2">
+                  <div className="flex gap-2">
+                    <dt className="text-sm text-gray-500">Style Number | </dt>
+                    <dd className="text-sm font-medium">
+                      {apiResponse.style_number || "-"}
+                    </dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="text-sm text-gray-500">Size | </dt>
+                    <dd className="text-sm font-medium">
+                      {apiResponse.size || "-"}
+                    </dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="text-sm text-gray-500">Color | </dt>
+                    <dd className="text-sm font-medium">
+                      {apiResponse.color || "-"}
+                    </dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="text-sm text-gray-500">Channel | </dt>
+                    <dd className="text-sm font-medium">
+                      {apiResponse.channel || "-"}
+                    </dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="text-sm text-gray-500">Location | </dt>
+                    <dd className="text-sm font-medium">
+                      {apiResponse.location_name || "-"}
+                    </dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="text-sm text-gray-500">Employee | </dt>
+                    <dd className="text-sm font-medium">
+                      {" "}
+                      {apiResponse?.employee_name?.startsWith("Satendra")
+                        ? "Sony Ji"
+                        : "Gudiya" || "-"}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <dt className="text-sm text-gray-500">Size | </dt>
-            <dd className="text-sm font-medium">{apiResponse.size || "-"}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-sm text-gray-500">Color | </dt>
-            <dd className="text-sm font-medium">{apiResponse.color || "-"}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-sm text-gray-500">Channel | </dt>
-            <dd className="text-sm font-medium">{apiResponse.channel || "-"}</dd>
-          </div>
-           <div className="flex gap-2">
-            <dt className="text-sm text-gray-500">Location | </dt>
-            <dd className="text-sm font-medium">{apiResponse.location_name || "-"}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-sm text-gray-500">Employee | </dt>
-            <dd className="text-sm font-medium"> {apiResponse?.employee_name?.startsWith("Satendra")?"Sony Ji":"Gudiya" || "-"}</dd>
-          </div>
-        </dl>
-      </div>
-    </div>
-  </div>
-</div>
+        </div>
       )}
 
       {scannedData && (
