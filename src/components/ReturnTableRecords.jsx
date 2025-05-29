@@ -1,5 +1,6 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
+import { FaDownload } from "react-icons/fa6";
 
 const ReturnTableRecords = () => {
   const [returnTableRecords, setReturnTableRecords] = useState([]);
@@ -23,12 +24,55 @@ const ReturnTableRecords = () => {
     fetchReturnTableRecords();
   }, []);
 
+// download inventory csv file
+const downloadCSV = (records) => {
+  const headers = [
+    "DropshipWarehouseId",
+    "Item SkuCode",
+    "InventoryAction",
+    "QtyIncludesBlocked",
+    "Qty",
+    "RackSpace",
+    "Last Purchase Price",
+    "Notes"
+  ];
+
+  const rows = returnTableRecords.map((record) => [
+    "22784",
+    `${record.styleNumber}-${record.color}-${record.size}`,
+    "ADD",
+    "",
+    "1",
+    "Return Table",
+    "",
+    ""
+  ]);
+
+  // Helper to wrap each value in double quotes
+  const toCSVRow = (row) => row.map(val => `"${val}"`).join(",");
+
+  const csvContent = [headers, ...rows].map(toCSVRow).join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", "UpdateInStockQtyAnd_orLastPurchasePrice.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow p-6 relative">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6">Return Table Records</h2>
+        <h2 className="text-2xl font-semibold text-blue-600 mb-6">Return Table Records</h2>
         <div className="absolute top-0 right-4">
-            <button className="bg-blue-500 py-2 px-4 rounded text-white cursor-pointer hover:bg-blue-600 duration-75 font-medium">Download Inventory</button>
+            <button className="bg-blue-500 py-2 px-4 flex gap-2 items-center rounded text-white cursor-pointer hover:bg-blue-600 duration-75 font-medium"
+            onClick={downloadCSV}
+            > <FaDownload/> Return Inventory</button>
         </div>
         
         {isLoading ? (
@@ -53,6 +97,9 @@ const ReturnTableRecords = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Sr.No
+                  </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Style Number
                   </th>
@@ -65,12 +112,18 @@ const ReturnTableRecords = () => {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Location
                   </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Order Id
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {returnTableRecords.length > 0 ? (
-                  returnTableRecords.map((record) => (
+                  returnTableRecords.map((record,i) => (
                     <tr key={record.order_id} className="hover:bg-gray-50 transition-colors duration-150">
+                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {i+1}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {record.styleNumber}
                       </td>
@@ -82,6 +135,9 @@ const ReturnTableRecords = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {record.location}
+                      </td>
+                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {record.order_id}
                       </td>
                     </tr>
                   ))
