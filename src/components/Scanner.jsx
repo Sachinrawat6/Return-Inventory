@@ -31,7 +31,7 @@ const QrScanner = () => {
           setError("No camera devices found.");
         } else {
           setCameras(devices);
-          setSelectedCameraId(devices[0].id);
+          setSelectedCameraId(devices[1].id);
         }
       })
       .catch((err) => {
