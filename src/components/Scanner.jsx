@@ -24,22 +24,28 @@ const QrScanner = () => {
 
 
 
-  useEffect(() => {
-    Html5Qrcode.getCameras()
-      .then((devices) => {
-        if (devices.length === 0) {
-          setError("No camera devices found.");
-        } else {
-          setCameras(devices);
-          setSelectedCameraId(devices[1].id);
-        }
-      })
-      .catch((err) => {
-        setError("Camera access error: " + err.message);
-      });
+ useEffect(() => {
+  Html5Qrcode.getCameras()
+    .then((devices) => {
+      if (devices.length === 0) {
+        setError("No camera devices found.");
+      } else {
+        const backCam = devices.find((device) =>
+          device.label.toLowerCase().includes("back") ||
+          device.label.toLowerCase().includes("environment")
+        );
+        const chosenCam = backCam || devices[0]; // fallback to first if no back cam found
+        setCameras([chosenCam]); // limit to just the chosen camera
+        setSelectedCameraId(chosenCam.id);
+      }
+    })
+    .catch((err) => {
+      setError("Camera access error: " + err.message);
+    });
 
-    return () => stopScanner();
-  }, []);
+  return () => stopScanner();
+}, []);
+
 
   useEffect(() => {
     if (mode === "camera" && selectedCameraId) {
@@ -109,7 +115,7 @@ const QrScanner = () => {
   };
 
   return (
-    <div className="flex flex-col items-center  justify-center min-h-screen bg-gray-100 p-4">
+    <div className="flex flex-col items-center  justify-center min-h-screen  p-4">
       <h1 className="text-2xl font-bold mb-4">QR Code Scanner</h1>
 
       <div className="mb-4">
@@ -143,23 +149,7 @@ const QrScanner = () => {
 
       {mode === "camera" && !scannedData && (
         <>
-          <div className="mb-4 w-full max-w-xs">
-            <label className="block mb-1 text-sm font-medium">Select Camera:</label>
-            <select
-              className="w-full p-2 rounded border border-gray-400"
-              value={selectedCameraId}
-              onChange={(e) => {
-                stopScanner();
-                setSelectedCameraId(e.target.value);
-              }}
-            >
-              {cameras.map((cam) => (
-                <option key={cam.id} value={cam.id}>
-                  {cam.label || "Camera"}
-                </option>
-              ))}
-            </select>
-          </div>
+         
           <div id={qrRegionId} className="w-64 h-64 rounded border border-gray-200 shadow-md mb-4"></div>
         </>
       )}
@@ -207,8 +197,8 @@ const QrScanner = () => {
     </div>
 
     <div className="grid grid-cols-1 gap-4">
-      <div className="bg-gray-50 p-4 rounded-md font-bold border border-gray-200">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">Product Details</h3>
+      <div className="bg-gray-50 p-4 rounded-md  border border-gray-200">
+        <h3 className="text-sm font-extrabold text-blue-700  mb-3">Product Details</h3>
         <dl className="space-y-2">
           <div className="flex gap-2">
             <dt className="text-sm text-gray-500">Style Number | </dt>
