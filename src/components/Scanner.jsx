@@ -16,6 +16,8 @@ const QrScanner = () => {
   const qrRegionId = "qr-reader";
 
   const API = "https://fastapi.qurvii.com/scan";
+  const PressTable_POST_API = "/api/v1/press-table/add-record";
+  const ReturnTable_POST_API = "/api/v1/return-table/add-record";
 
   const postScanData = async (orderId) => {
     const response = await axios.post(API, {
@@ -25,6 +27,17 @@ const QrScanner = () => {
     });
     const data = response.data.data;
     setApiResponse(data);
+    console.log(data)
+    const post_data_response = await axios.post(ReturnTable_POST_API,{
+      styleNumber:data.style_number,
+      size:data.size,
+      channel:data.channel,
+      color:data.color,
+      location:"Return Table",
+      employee_name:data.employee_name,
+      order_id:orderId
+    })
+    console.log(post_data_response);
   };
 
   useEffect(() => {
@@ -187,7 +200,7 @@ const QrScanner = () => {
           <div className="bg-blue-50 px-4 py-3 border-b border-blue-100">
             <h2 className="text-lg font-semibold text-gray-800 flex items-center">
               <svg
-                className="w-5 h-5 text-green-500 mr-2"
+                className="w-5 h-5 text-blue-500 mr-2"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -207,7 +220,7 @@ const QrScanner = () => {
             <div className="mb-4">
               <h3 className="text-sm font-medium text-gray-500 mb-1">Order ID</h3>
               <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                <p className="break-all font-mono text-green-600">{scannedData}</p>
+                <p className="break-all font-mono text-blue-600">{scannedData}</p>
               </div>
             </div>
 
