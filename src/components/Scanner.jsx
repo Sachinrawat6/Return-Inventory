@@ -210,7 +210,7 @@ const QrScanner = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+        {apiResponse? <div className="grid grid-cols-1 gap-4">
               <div className="bg-gray-50 p-4 rounded-md  border border-gray-200">
                 <h3 className="text-sm font-extrabold text-blue-700  mb-3">
                   Product Details
@@ -257,7 +257,7 @@ const QrScanner = () => {
                   </div>
                 </dl>
               </div>
-            </div>
+            </div>:<p className="text-center animate-pulse">Loading data....</p>}
           </div>
         </div>
       )}
