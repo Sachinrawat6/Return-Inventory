@@ -84,7 +84,7 @@ const QrScanner = () => {
       });
 
     return () => stopScanner();
-  }, []);
+  }, [depart]);
 
   useEffect(() => {
     if (mode === "camera" && selectedCameraId) {
