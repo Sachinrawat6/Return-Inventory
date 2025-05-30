@@ -89,54 +89,46 @@ const QrScanner = () => {
     return () => stopScanner();
   }, []);
 
- useEffect(() => {
-  if (mode === "camera" && selectedCameraId && depart && showScanner && !scannerRunning.current) {
-    startScanner(selectedCameraId);
-  }
-  return () => stopScanner();
-}, [selectedCameraId, mode, depart, showScanner]);
+  useEffect(() => {
+    if (mode === "camera" && selectedCameraId && depart) {
+      startScanner(selectedCameraId);
+    }
+    return () => stopScanner();
+  }, [selectedCameraId, mode, depart]);
 
-const startScanner = (cameraId) => {
-  const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-  const qrElement = document.getElementById(qrRegionId);
-  if (qrElement) qrElement.innerHTML = "";
+  const startScanner = (cameraId) => {
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+    const qrElement = document.getElementById(qrRegionId);
+    if (qrElement) qrElement.innerHTML = ""; // Clear previous instance
 
-  html5QrCodeRef.current = new Html5Qrcode(qrRegionId);
+    html5QrCodeRef.current = new Html5Qrcode(qrRegionId);
 
-  html5QrCodeRef.current
-    .start(
-      cameraId,
-      config,
-      async (decodedText) => {
-        if (!depart) {
-          setError("Please select a department before scanning.");
+    html5QrCodeRef.current
+      .start(
+        cameraId,
+        config,
+        async(decodedText) => {
+          if (!depart) {
+            setError("Please select a department before scanning.");
+            stopScanner();
+            return;
+          }
+
+          setScannedData(decodedText);
+          setShowScanner(false);
+          await postScanData(decodedText);
           stopScanner();
-          return;
-        }
+        },
 
-        const parsedOrderId = parseInt(decodedText);
-        if (isNaN(parsedOrderId)) {
-          setError("Invalid QR Code: Order ID is not a number.");
-          stopScanner();
-          return;
-        }
-
-        setScannedData(decodedText);
-        setShowScanner(false);
-        scannerRunning.current = false; // prevent double scans
-        await postScanData(parsedOrderId);
-        stopScanner();
-      },
-      () => {}
-    )
-    .then(() => {
-      scannerRunning.current = true;
-    })
-    .catch((err) => {
-      setError("Failed to start scanner: " + err.message);
-    });
-};
-
+        () => {}
+      )
+      .then(() => {
+        scannerRunning.current = true;
+      })
+      .catch((err) => {
+        setError("Failed to start scanner: " + err.message);
+      });
+  };
 
   const stopScanner = () => {
     if (scannerRunning.current && html5QrCodeRef.current) {
