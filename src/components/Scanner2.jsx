@@ -10,13 +10,15 @@ const QrScanner = () => {
   const [selectedCameraId, setSelectedCameraId] = useState("");
   const [mode, setMode] = useState("camera");
   const [showScanner, setShowScanner] = useState(true);
-  let [depart, setDepart] = useState("");
+  const [depart, setDepart] = useState("");
   const [recordAddedResponse, setRecordAddedResponse] = useState("");
   const [isMobile, setIsMobile] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
 
   const scannerRunning = useRef(false);
   const html5QrCodeRef = useRef(null);
   const qrRegionId = "qr-reader";
+  const fileInputRef = useRef(null);
 
   const API = "https://fastapi.qurvii.com/scan";
   const PressTable_POST_API = "/api/v1/press-table/add-record";
@@ -105,7 +107,7 @@ const QrScanner = () => {
   const startScanner = (cameraId) => {
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
     const qrElement = document.getElementById(qrRegionId);
-    if (qrElement) qrElement.innerHTML = ""; // Clear previous instance
+    if (qrElement) qrElement.innerHTML = "";
 
     html5QrCodeRef.current = new Html5Qrcode(qrRegionId);
 
@@ -167,28 +169,90 @@ const QrScanner = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Clear any previous scanner instances
-    if (html5QrCodeRef.current) {
-      await html5QrCodeRef.current.stop().catch(() => {});
-      html5QrCodeRef.current.clear();
+    // Reset input to allow same file re-upload
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
 
+    setIsScanning(true);
+
     try {
-      // Create a new instance for file scanning
+      // Create a new scanner instance
       const qrCode = new Html5Qrcode(qrRegionId);
       html5QrCodeRef.current = qrCode;
-      
-      // For mobile devices, use showImage as true to render the image
-      const result = await qrCode.scanFile(file, isMobile);
-      setScannedData(result);
-      await postScanData(result);
+
+      // Mobile-specific handling
+      if (isMobile) {
+        // Step 1: Read the file as Data URL
+        const imageDataUrl = await new Promise((resolve, reject) => {
+          const fileReader = new FileReader();
+          fileReader.onload = (event) => resolve(event.target.result);
+          fileReader.onerror = (error) => reject(error);
+          fileReader.readAsDataURL(file);
+        });
+
+        // Step 2: Create an image element to check dimensions
+        const img = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = (error) => reject(error);
+          img.src = imageDataUrl;
+        });
+
+        // Step 3: Check if image needs resizing (mobile often has large images)
+        const MAX_DIMENSION = 1000; // pixels
+        let finalDataUrl = imageDataUrl;
+        
+        if (img.width > MAX_DIMENSION || img.height > MAX_DIMENSION) {
+          // Create a canvas to resize the image
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Calculate new dimensions while maintaining aspect ratio
+          let newWidth, newHeight;
+          if (img.width > img.height) {
+            newWidth = MAX_DIMENSION;
+            newHeight = (img.height / img.width) * MAX_DIMENSION;
+          } else {
+            newHeight = MAX_DIMENSION;
+            newWidth = (img.width / img.height) * MAX_DIMENSION;
+          }
+          
+          canvas.width = newWidth;
+          canvas.height = newHeight;
+          ctx.drawImage(img, 0, 0, newWidth, newHeight);
+          
+          // Get the resized image as data URL
+          finalDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        }
+
+        // Step 4: Scan the (possibly resized) image
+        const result = await qrCode.scanFile(finalDataUrl, false);
+        setScannedData(result);
+        await postScanData(result);
+      } else {
+        // Desktop - simpler approach
+        const result = await qrCode.scanFile(file, false);
+        setScannedData(result);
+        await postScanData(result);
+      }
     } catch (err) {
-      setError("Image scan failed: " + err.message);
+      setError(`Failed to scan image: ${err.message}`);
       console.error("Scan error:", err);
+    } finally {
+      setIsScanning(false);
+      // Clean up
+      if (html5QrCodeRef.current) {
+        try {
+          await html5QrCodeRef.current.stop();
+          html5QrCodeRef.current.clear();
+        } catch (cleanupErr) {
+          console.warn("Cleanup error:", cleanupErr);
+        }
+      }
     }
   };
 
-  // Rest of your component remains the same...
   return (
     <>
       <div className="absolute right-4 sm:top-20 top-4 ">
@@ -205,7 +269,7 @@ const QrScanner = () => {
         </p>
       </div>
       <div className="flex flex-col items-center sm:w-100 w-[90vw]  justify-center sm:min-h-[50vh] min-h-[80vh]  rounded sm:shadow sm:mt-10 mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4 text-blue-500">QR Code Scanner</h1>
+        <h1 className="text-2xl font-bold mb-4">QR Code Scanner</h1>
 
         <div className="mb-4">
           <select
@@ -269,11 +333,16 @@ const QrScanner = () => {
         {mode === "upload" && !scannedData && (
           <div className="w-full max-w-xs mb-4">
             <input
+              ref={fileInputRef}
               type="file"
               accept="image/*"
               onChange={handleImageUpload}
+              disabled={isScanning}
               className="p-2 border rounded border-gray-200 w-full bg-white"
             />
+            {isScanning && (
+              <div className="mt-2 text-center text-blue-600">Scanning image...</div>
+            )}
             <div id={qrRegionId} className="hidden" />
           </div>
         )}
