@@ -107,7 +107,7 @@ const QrScanner = () => {
       .start(
         cameraId,
         config,
-        async(decodedText) => {
+        (decodedText) => {
           if (!depart) {
             setError("Please select a department before scanning.");
             stopScanner();
@@ -116,7 +116,7 @@ const QrScanner = () => {
 
           setScannedData(decodedText);
           setShowScanner(false);
-          await postScanData(decodedText);
+          postScanData(decodedText);
           stopScanner();
         },
 
