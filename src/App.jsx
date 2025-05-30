@@ -13,9 +13,9 @@ const App = () => {
    <BrowserRouter>
    <Navbar/>
    <Routes>
-    {/* <Route path='/' element={<Scanner/>}/> */}
-    <Route path='/' element={<TestQr/>}/>
-    {/* <Route path='/' element={<QrScanner/>}/> */}
+    <Route path='/' element={<Scanner/>}/>
+    {/* <Route path='/' element={<TestQr/>}/> */}
+    <Route path='/test' element={<QrScanner/>}/>
     <Route path='/return-table-records' element={<ReturnTableRecords/>}/>
     <Route path='/press-table-records' element={<PressTableRecords/>}/>
     <Route path='/shipped-records' element={<ShippedRecord/>}/>
