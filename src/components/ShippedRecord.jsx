@@ -34,7 +34,7 @@ const ShippedRecord = () => {
     if (!confirmed) return;
     try {
       const response = await axios.delete(
-        "/api/v1/ship-record/delete-shipped-record",
+        `${BASE_URL}/api/v1/ship-record/delete-shipped-record`,
         {
           data: { _id },
         }
