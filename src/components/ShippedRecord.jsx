@@ -5,12 +5,13 @@ const ShippedRecord = () => {
   const [shippedRecords, setShippedRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const BASE_URL ='https://return-inventory-backend.onrender.com'; 
 
   // return table records
   const fetchShippedRecords = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get("/api/v1/ship-record");
+      const response = await axios.get(`${BASE_URL}/api/v1/ship-record`);
       setShippedRecords(response.data.data);
     } catch (err) {
       setError("Failed to fetch records. Please try again later.");

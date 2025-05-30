@@ -6,11 +6,11 @@ const ReturnTableRecords = () => {
   const [returnTableRecords, setReturnTableRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const BASE_URL ='https://return-inventory-backend.onrender.com'; 
   const fetchReturnTableRecords = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get("/api/v1/return-table/get-records");
+      const response = await axios.get(`${BASE_URL}/api/v1/return-table/get-records`);
       setReturnTableRecords(response.data.data);
     } catch (err) {
       setError("Failed to fetch records. Please try again later.");
