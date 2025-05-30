@@ -89,12 +89,13 @@ const QrScanner = () => {
     return () => stopScanner();
   }, []);
 
-  useEffect(() => {
-    if (mode === "camera" && selectedCameraId && depart) {
-      startScanner(selectedCameraId);
-    }
-    return () => stopScanner();
-  }, [selectedCameraId, mode, depart]);
+ useEffect(() => {
+  if (mode === "camera" && selectedCameraId && depart && showScanner && !scannerRunning.current) {
+    startScanner(selectedCameraId);
+  }
+  return () => stopScanner();
+}, [selectedCameraId, mode, depart, showScanner]);
+
 
   const startScanner = (cameraId) => {
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
@@ -107,7 +108,7 @@ const QrScanner = () => {
       .start(
         cameraId,
         config,
-        (decodedText) => {
+        async(decodedText) => {
           if (!depart) {
             setError("Please select a department before scanning.");
             stopScanner();
@@ -116,7 +117,7 @@ const QrScanner = () => {
 
           setScannedData(decodedText);
           setShowScanner(false);
-          postScanData(scannedData);
+          await postScanData(decodedText);
           stopScanner();
         },
 
