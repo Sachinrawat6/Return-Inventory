@@ -15,7 +15,7 @@ const App = () => {
    <Routes>
     <Route path='/' element={<Scanner/>}/>
     {/* <Route path='/' element={<TestQr/>}/> */}
-    <Route path='/test2' element={<QrScanner/>}/>
+    {/* <Route path='/test2' element={<QrScanner/>}/> */}
     <Route path='/return-table-records' element={<ReturnTableRecords/>}/>
     <Route path='/press-table-records' element={<PressTableRecords/>}/>
     <Route path='/shipped-records' element={<ShippedRecord/>}/>
