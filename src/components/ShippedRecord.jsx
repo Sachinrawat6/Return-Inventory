@@ -33,7 +33,7 @@ const ShippedRecord = () => {
     );
     if (!confirmed) return;
     try {
-      const response = await axios.delete(
+      const response = await axios.post(
         `${BASE_URL}/api/v1/ship-record/delete-shipped-record`,
         {
           data: { _id },
@@ -143,7 +143,7 @@ const ShippedRecord = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {i + 1}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-6 py-4n  whitespace-nowrap text-sm font-medium text-blue-900">
                         {record.styleNumber}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
