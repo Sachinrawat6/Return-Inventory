@@ -36,7 +36,7 @@ const ShippedRecord = () => {
       const response = await axios.post(
         `${BASE_URL}/api/v1/ship-record/delete-shipped-record`,
         {
-          data: { _id },
+          _id
         }
       );
 
@@ -160,7 +160,7 @@ const ShippedRecord = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <button
-                          onClick={() => deleteShippedRecord(record._id)}
+                          onClick={() => deleteShippedRecord({_id:record._id})}
                           className="bg-red-500 py-2 rounded-2xl text-white hover:bg-red-600 duration-75 cursor-pointer px-4"
                         >
                           Delete
