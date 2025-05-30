@@ -69,7 +69,7 @@ const downloadCSV = (records) => {
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow p-6 relative">
         <h2 className="text-2xl font-semibold text-blue-600 mb-6">Return Table Records</h2>
-        <div className="absolute top-0 right-4">
+        <div className="absolute top-0 right-4 hidden sm:block">
             <button className="bg-blue-500 py-2 px-4 flex gap-2 items-center rounded text-white cursor-pointer hover:bg-blue-600 duration-75 font-medium"
             onClick={downloadCSV}
             > <FaDownload/> Return Inventory</button>

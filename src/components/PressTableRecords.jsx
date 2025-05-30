@@ -4,10 +4,12 @@ import { FaDownload } from "react-icons/fa6";
 
 const PressTableRecords = () => {
   const [pressTableRecords, setPressTableRecords] = useState([]);
+  const [returnTableRecords, setReturnTableRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchReturnTableRecords = async () => {
+  // return table records
+  const fetchPressTableRecords = async () => {
     try {
       setIsLoading(true);
       const response = await axios.get("/api/v1/press-table/get-records");
@@ -20,13 +22,29 @@ const PressTableRecords = () => {
     }
   };
 
+// press table records
+const fetchReturnTableRecords = async()=>{
+    try {
+      setIsLoading(true);
+      const response = await axios.get("/api/v1/return-table/get-records");
+      setReturnTableRecords(response.data.data);
+      
+    } catch (err) {
+      setError("Failed to fetch records. Please try again later.");
+      console.error("Error fetching return table records:", err);
+    } finally {
+      setIsLoading(false);
+    }
+}
+
   useEffect(() => {
+    fetchPressTableRecords();
     fetchReturnTableRecords();
   }, []);
 
 
   
-// download inventory csv file
+// download add inventory csv file
 const downloadCSV = (records) => {
   const headers = [
     "DropshipWarehouseId",
@@ -67,14 +85,64 @@ const downloadCSV = (records) => {
 };
 
 
+
+// download reset inventory csv file
+const downloadResetCSV = (pressTableRecords, returnTableRecords) => {
+  const headers = [
+    "DropshipWarehouseId",
+    "Item SkuCode",
+    "InventoryAction",
+    "QtyIncludesBlocked",
+    "Qty",
+    "RackSpace",
+    "Last Purchase Price",
+    "Notes"
+  ];
+
+  // Filter out records that are present in returnTableRecords based on order_id
+  const filteredRecords = pressTableRecords.filter(
+    (record) => !returnTableRecords.some(returnRecord => returnRecord.order_id === record.order_id)
+  );
+
+  const rows = filteredRecords.map((record) => [
+    "22784",
+    `${record.styleNumber}-${record.color}-${record.size}`,
+    "RESET",
+    "",
+    "0",
+    "Return Table",
+    "",
+    ""
+  ]);
+
+  const toCSVRow = (row) => row.map(val => `"${val}"`).join(",");
+
+  const csvContent = [headers, ...rows].map(toCSVRow).join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", "UpdateInStockQtyAnd_orLastPurchasePrice.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow p-6 relative">
         <h2 className="text-2xl font-semibold  mb-6 text-green-500">  Press Table Records</h2>
-        <div className="absolute top-0 right-4">
+        <div className="absolute top-0 right-4 sm:flex gap-4 hidden ">
+         <button 
+            onClick={()=>downloadResetCSV(pressTableRecords,returnTableRecords)}
+            className="bg-red-500 py-2 px-4 rounded text-white cursor-pointer hover:bg-red-600 duration-75 font-medium flex items-center gap-2"> <FaDownload/> Reset Inventory</button>
             <button 
             onClick={downloadCSV}
-            className="bg-green-500 py-2 px-4 rounded text-white cursor-pointer hover:bg-green-600 duration-75 font-medium flex items-center gap-2"> <FaDownload/> Press Inventory</button>
+            className="bg-green-500 py-2 px-4 rounded text-white cursor-pointer hover:bg-green-600 duration-75 font-medium flex items-center gap-2"> <FaDownload/> Add Inventory</button>
         </div>
         
         {isLoading ? (

@@ -10,7 +10,7 @@ const QrScanner = () => {
   const [selectedCameraId, setSelectedCameraId] = useState("");
   const [mode, setMode] = useState("camera");
   const [showScanner, setShowScanner] = useState(true);
-  let [depart, setDepart] = useState('');
+  const [depart, setDepart] = useState('');
   const [recordAddedResponse,setRecordAddedResponse] = useState('');
 
   const scannerRunning = useRef(false);
@@ -20,47 +20,27 @@ const QrScanner = () => {
   const API = "https://fastapi.qurvii.com/scan";
   const PressTable_POST_API = "/api/v1/press-table/add-record";
   const ReturnTable_POST_API = "/api/v1/return-table/add-record";
-  const Ship_POST_API = "/api/v1/ship-record/ship";
 
   const postScanData = async (orderId) => {
-    try {
-      const response = await axios.post(API, {
-        user_id: 6,
-        order_id: parseInt(orderId),
-        user_location_id: 139,
-      });
-      const data = response.data.data;
-      setApiResponse(data);
-  
-      // setting departments 
-      const departCategory = {
-        "Press":PressTable_POST_API,
-        "Return":ReturnTable_POST_API,
-        "Ship":Ship_POST_API
-      }
-      const post_data_response =  await axios.post(departCategory[depart],{
-        styleNumber:data.style_number,
-        size:data.size,
-        channel:data.channel,
-        color:data.color,
-        location:"Return Table",
-        employee_name:data.employee_name,
-        order_id:orderId
-      })
-      console.log(post_data_response);
-      setRecordAddedResponse(`Record added to ${depart} database.`)
-    } catch (error) {
-       if (error.response && error.response.status === 409) {
-      // Record already exists
-      setRecordAddedResponse("❌ Record already exists in database.");
-    } else {
-      setRecordAddedResponse("❌ Failed to add record. Try again.");
-    }
-      
-    }
-     setTimeout(()=>{
-    setRecordAddedResponse("");
-  },3000)
+    const response = await axios.post(API, {
+      user_id: 6,
+      order_id: parseInt(orderId),
+      user_location_id: 139,
+    });
+    const data = response.data.data;
+    setApiResponse(data);
+    console.log(data)
+    const post_data_response =  await axios.post(depart==="Return"?ReturnTable_POST_API:PressTable_POST_API,{
+      styleNumber:data.style_number,
+      size:data.size,
+      channel:data.channel,
+      color:data.color,
+      location:"Return Table",
+      employee_name:data.employee_name,
+      order_id:orderId
+    })
+    console.log(post_data_response);
+    setRecordAddedResponse(`Record added to ${depart} table database`)
   };
 
 
@@ -162,12 +142,10 @@ const QrScanner = () => {
     }
   };
 
- 
-
   return (
     <>
-     <div className="absolute right-4 sm:top-20 top-4 ">
-        <p className={` ${recordAddedResponse.startsWith("❌")?"bg-red-200 text-red-800":"bg-green-400"} py-2 px-4  text-gray-700 ${recordAddedResponse===""?"hidden":"block"} `}>{recordAddedResponse!==""?recordAddedResponse:""}</p>
+     <div className="absolute right-4 sm:top-20 top-4">
+        <p className="py-2 px-4 bg-green-400 ">record added</p>
       </div>
     <div className="flex flex-col items-center sm:w-100 w-[90vw]  justify-center sm:min-h-[50vh] min-h-[80vh]  rounded sm:shadow sm:mt-10 mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">QR Code Scanner</h1>
@@ -180,7 +158,6 @@ const QrScanner = () => {
           <option value="">Select Department</option>
           <option value="Return">Return</option>
           <option value="Press">Press</option>
-          <option value="Ship">Ship</option>
         </select>
       </div>
 
@@ -291,7 +268,13 @@ const QrScanner = () => {
                     </div>
                     <div className="flex gap-2">
                       <dt className="text-sm text-gray-500">Location |</dt>
-                      <dd className="text-sm font-medium">{depart==="Return"?"Return Table":depart==="Press"?"Press Table":"Shipped"}</dd>
+                      <dd className="text-sm font-medium">{apiResponse.location_name || "-"}</dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="text-sm text-gray-500">Employee |</dt>
+                      <dd className="text-sm font-medium">
+                        {apiResponse?.employee_name?.startsWith("Satendra") ? "Sony Ji" : "Gudiya" || "-"}
+                      </dd>
                     </div>
                   </dl>
                 </div>
