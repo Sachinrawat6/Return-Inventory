@@ -87,7 +87,7 @@ const QrScanner = () => {
       });
 
     return () => stopScanner();
-  }, []);
+  }, [depart]);
 
   useEffect(() => {
     if (mode === "camera" && selectedCameraId && depart) {
@@ -116,7 +116,7 @@ const QrScanner = () => {
 
           setScannedData(decodedText);
           setShowScanner(false);
-          postScanData(decodedText);
+          postScanData(scannedData);
           stopScanner();
         },
 
