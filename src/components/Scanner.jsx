@@ -16,7 +16,7 @@ const QrScanner = () => {
   const scannerRunning = useRef(false);
   const html5QrCodeRef = useRef(null);
   const qrRegionId = "qr-reader";
-
+  const BASE_URL ='https://return-inventory-backend.onrender.com/';
   const API = "https://fastapi.qurvii.com/scan";
   const PressTable_POST_API = "/api/v1/press-table/add-record";
   const ReturnTable_POST_API = "/api/v1/return-table/add-record";

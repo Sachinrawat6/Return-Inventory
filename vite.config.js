@@ -8,7 +8,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://return-inventory-backend.onrender.com/',
+        target: 'https://return-inventory-backend.onrender.com',
         changeOrigin: true,
         secure: false,
       }
