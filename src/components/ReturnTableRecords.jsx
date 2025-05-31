@@ -43,7 +43,7 @@ const downloadCSV = (records) => {
     "ADD",
     "",
     "1",
-    "Return Table",
+    "Intransit",
     "",
     ""
   ]);

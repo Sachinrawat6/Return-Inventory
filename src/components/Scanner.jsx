@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import Select from "react-select";
 import axios from "axios";
 
 const QrScanner = () => {
@@ -12,15 +13,28 @@ const QrScanner = () => {
   const [showScanner, setShowScanner] = useState(true);
   let [depart, setDepart] = useState("");
   const [recordAddedResponse, setRecordAddedResponse] = useState("");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [syncOrder,setSyncOrder] = useState([]);
+  const [orderId,setOrderId] = useState("");
+  const [formData,setFormData]  = useState({
+    styleNumber:"",
+    size:""
+  })
 
   const scannerRunning = useRef(false);
   const html5QrCodeRef = useRef(null);
   const qrRegionId = "qr-reader";
   const BASE_URL ='https://return-inventory-backend.onrender.com';
-  const API = "https://fastapi.qurvii.com/scan";
+  const API = "https://fastapi.qurvii.com";
   const PressTable_POST_API = `${BASE_URL}/api/v1/press-table/add-record`
   const ReturnTable_POST_API = `${BASE_URL}/api/v1/return-table/add-record`;
   const Ship_POST_API = `${BASE_URL}/api/v1/ship-record/ship`;
+   // setting departments
+      const departCategory = {
+        Press: PressTable_POST_API,
+        Return: ReturnTable_POST_API,
+        Ship: Ship_POST_API,
+      };
 
   const postScanData = async (orderId) => {
     if (!depart) {
@@ -28,7 +42,7 @@ const QrScanner = () => {
       return;
     }
     try {
-      const response = await axios.post(API, {
+      const response = await axios.post(`${API}/scan`, {
         user_id: 6,
         order_id: parseInt(orderId),
         user_location_id: 139,
@@ -36,12 +50,7 @@ const QrScanner = () => {
       const data = response.data.data;
       setApiResponse(data);
 
-      // setting departments
-      const departCategory = {
-        Press: PressTable_POST_API,
-        Return: ReturnTable_POST_API,
-        Ship: Ship_POST_API,
-      };
+     
       const post_data_response = await axios.post(departCategory[depart], {
         styleNumber: data.style_number,
         size: data.size,
@@ -172,6 +181,103 @@ const QrScanner = () => {
     }
   };
 
+
+
+   const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+  // auotmatic open size dropdown when style number length is equal to 5
+const styleNumberRef = useRef(null);
+  const sizeRef = useRef(null);
+  useEffect(() => {
+    if (formData.styleNumber.length === 5) {
+      setIsMenuOpen(true);
+      sizeRef.current?.focus();
+    }
+  }, [formData.styleNumber]);
+
+
+
+  // add sync order data to return table
+
+  const syncAndAddToReturnTable = async(data)=>{
+    const response = await axios.post(departCategory[depart],{
+      styleNumber: data.style_number,
+        size: data.size,
+        channel: data.channel,
+        color: data.color || "other",
+        location: `${depart} Table`,
+        employee_name: data.employee_name || "Checker",
+        order_id: data.order_id,
+    })
+    console.log(response.data);
+
+  }
+
+
+  // add order to press table 
+  const handleMoveToPress = async(e)=>{
+   try {
+     e.preventDefault();
+     const getRecordFromReturnTable = await axios.get(`${BASE_URL}/api/v1/return-table/get-records`);
+     const data = getRecordFromReturnTable.data.data;
+     const findAndAddToPressOrShip = data.find((order)=>order.order_id === Number(orderId));
+     const response = await axios.post(PressTable_POST_API,findAndAddToPressOrShip)
+     console.log(response);
+     setRecordAddedResponse("Order id moved to Press Table")
+     setOrderId("")
+
+   } catch (error) {
+    console.log(`Failed to Add ${depart} Table `, error);
+    setRecordAddedResponse("❌ Failed to move press table")
+   }
+  }
+
+  
+  // add order to press table 
+  const handleMoveToShip = async(e)=>{
+   try {
+     e.preventDefault();
+     const getRecordFromPressTable = await axios.get(`${BASE_URL}/api/v1/press-table/get-records`);
+     const data = getRecordFromPressTable.data.data;
+     const findAndAddToPressOrShip = data.find((order)=>order.order_id === Number(orderId));
+     const response = await axios.post(Ship_POST_API,findAndAddToPressOrShip)
+     console.log(response)
+     setRecordAddedResponse("Order id moved to ship")
+     setOrderId("")
+   } catch (error) {
+    console.log(`Failed to Add ${depart} Table `, error);
+    setRecordAddedResponse("❌ Failed to move ship")
+    
+   }
+  }
+
+  // add record to orders
+  const handleSubmit = async(e)=>{
+    const validorders = {
+        channel:depart,
+        style_number:Number(formData.styleNumber),
+        size:formData.size,
+        color:"",
+        status:'return table',
+        found_in_inventory:false
+      }
+  try {
+      e.preventDefault();
+      const response = await axios.post(`${API}/sync-orders`,[validorders])
+      const data = response.data.all_orders[0];
+      setSyncOrder(data);
+      syncAndAddToReturnTable(data);
+      setRecordAddedResponse("1 Record synced")
+      setFormData({styleNumber:"",size:""})
+  } catch (error) {
+    console.log("Failed to sync order ", error)
+    setRecordAddedResponse("❌ Failed to sync")
+  }
+  }
+  
+
   return (
     <>
       <div className="absolute right-4 sm:top-20 top-4 ">
@@ -203,38 +309,80 @@ const QrScanner = () => {
           </select>
         </div>
 
-        <div className={`${depart === "" ? "hidden" : "block"} mb-4`}>
-          <button
-            className={`px-4 py-2 mr-2 rounded ${
-              mode === "camera" ? "bg-blue-600 text-white" : "bg-gray-200"
-            }`}
-            onClick={() => {
-              stopScanner();
-              setMode("camera");
-              setScannedData("");
-              setShowScanner(true);
+      
+
+        <div className={`${depart === "" ? "hidden" : "block"} p-2 mb-2`}>
+          {depart==="Return" ?
+          <form className="flex gap-2 flex-col" onSubmit={handleSubmit}>
+            <input ref={styleNumberRef} 
+            value={formData.styleNumber}
+            onChange={handleChange}
+            className="py-2 px-4 border-gray-300 border rounded outline-blue-500"
+            name="styleNumber"
+            type="number" placeholder="Enter style number..." />
+
+             <Select
+            ref={sizeRef}
+            name="size"
+            options={[
+              { label: "XXS", value: "XXS" },
+              { label: "XS", value: "XS" },
+              { label: "S", value: "S" },
+              { label: "M", value: "M" },
+              { label: "L", value: "L" },
+              { label: "XL", value: "XL" },
+              { label: "2XL", value: "2XL" },
+              { label: "3XL", value: "3XL" },
+              { label: "4XL", value: "4XL" },
+              { label: "5XL", value: "5XL" },
+            ]}
+            menuIsOpen={isMenuOpen}
+            onMenuClose={() => setIsMenuOpen(false)}
+            value={
+              formData.size
+                ? { label: formData.size, value: formData.size }
+                : null
+            }
+            onChange={(selectedOption) => {
+              setFormData((prev) => ({
+                ...prev,
+                size: selectedOption.value,
+              }));
+              
             }}
-          >
-            Camera
-          </button>
-          <button
-            className={`px-4 py-2 rounded ${
-              mode === "upload" ? "bg-blue-600 text-white" : "bg-gray-200"
-            }`}
-            onClick={() => {
-              stopScanner();
-              setMode("upload");
-              setScannedData("");
+            styles={{
+              menu: (provided) => ({
+                ...provided,
+                maxHeight: "none",
+              }),
+              menuList: (provided) => ({
+                ...provided,
+                maxHeight: "none",
+              }),
             }}
-          >
-            Upload
-          </button>
+          />
+          <input type="submit" value="Add To Return" 
+          className="bg-blue-400 text-white w-full py-2 px-4  rounded  outline-none hover:bg-blue-500 cursor-pointer"
+          />
+          </form> :(
+                <form onSubmit={depart === "Press" ? handleMoveToPress : handleMoveToShip} className="flex flex-col gap-2">
+                  <input type="number"
+                  className="border border-gray-200 py-2 px-4 rounded outline-blue-500 "
+                    onChange={(e)=>setOrderId(e.target.value)}
+                   value={orderId}
+                   placeholder="Enter order id..." />
+                   <input type="submit" value={`Add To ${depart}`}
+                 
+                   className="bg-blue-400 text-white w-full py-2 px-4  rounded  outline-none hover:bg-blue-500 cursor-pointer" />
+                </form>
+          )
+        }
         </div>
 
         {error && (
           <div
             className={`bg-red-100 text-red-700 p-3 rounded w-full max-w-md text-center mb-4 ${
-              depart === "" ? "hidden" : "block"
+              depart === "" || formData.styleNumber.length > 0 ? "hidden" : "block"
             }`}
           >
             {error}
@@ -245,22 +393,12 @@ const QrScanner = () => {
           <div
             id={qrRegionId}
             className={`${
-              depart === "" ? "hidden" : "block"
+              depart === "" || formData.styleNumber.length > 0 ? "hidden" : "block"
             } w-64 h-64 rounded border border-gray-200 mb-4`}
           ></div>
         )}
 
-        {mode === "upload" && !scannedData && (
-          <div className="w-full max-w-xs mb-4">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="p-2 border rounded border-gray-200 w-full bg-white"
-            />
-            <div id={qrRegionId} className="hidden" />
-          </div>
-        )}
+      
 
         {scannedData && (
           <div className="bg-white rounded-lg overflow-hidden border border-gray-100 w-full max-w-md mx-auto mb-6">
