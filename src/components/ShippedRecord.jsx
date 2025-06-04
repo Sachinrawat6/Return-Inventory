@@ -3,11 +3,13 @@ import React, { useEffect, useState } from "react";
 
 const ShippedRecord = () => {
   const [shippedRecords, setShippedRecords] = useState([]);
+  const [selectedRecords, setSelectedRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const BASE_URL ='https://return-inventory-backend.onrender.com'; 
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState(0);
+  const BASE_URL = 'https://return-inventory-backend.onrender.com';
 
-  // return table records
   const fetchShippedRecords = async () => {
     try {
       setIsLoading(true);
@@ -25,25 +27,30 @@ const ShippedRecord = () => {
     fetchShippedRecords();
   }, []);
 
-  // delete shipped record
+  const toggleSelect = (record) => {
+    const exists = selectedRecords.find((r) => r._id === record._id);
+    if (exists) {
+      setSelectedRecords(selectedRecords.filter((r) => r._id !== record._id));
+    } else {
+      setSelectedRecords([...selectedRecords, record]);
+    }
+  };
 
-  const deleteShippedRecord = async (_id) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this record?"
-    );
+  const toggleSelectAll = () => {
+    if (selectedRecords.length === shippedRecords.length) {
+      setSelectedRecords([]);
+    } else {
+      setSelectedRecords(shippedRecords);
+    }
+  };
+
+  const deleteShippedRecordById = async (_id) => {
+    const confirmed = window.confirm("Are you sure you want to delete this record?");
     if (!confirmed) return;
     try {
-      const response = await axios.post(
-        `${BASE_URL}/api/v1/ship-record/delete-shipped-record`,
-        {
-          _id
-        }
-      );
-
+      const response = await axios.post(`${BASE_URL}/api/v1/ship-record/delete-shipped-record`, { _id });
       if (response.status === 200) {
-        setShippedRecords((prev) =>
-          prev.filter((record) => record._id !== _id)
-        );
+        setShippedRecords((prev) => prev.filter((record) => record._id !== _id));
       }
     } catch (error) {
       console.error("Delete error:", error.response?.data || error.message);
@@ -51,117 +58,123 @@ const ShippedRecord = () => {
     }
   };
 
+  const deleteSelectedRecords = async () => {
+    if (selectedRecords.length === 0) return alert("Please select at least one record.");
+    const confirm = window.confirm(`Are you sure you want to delete ${selectedRecords.length} record(s)?`);
+    if (!confirm) return;
+
+    setIsDeleting(true);
+    setDeleteProgress(0);
+
+    try {
+      for (let i = 0; i < selectedRecords.length; i++) {
+        await axios.post(`${BASE_URL}/api/v1/ship-record/delete-shipped-record`, {
+          _id: selectedRecords[i]._id,
+        });
+        const progress = Math.round(((i + 1) / selectedRecords.length) * 100);
+        setDeleteProgress(progress);
+      }
+
+      setShippedRecords((prev) => prev.filter((r) => !selectedRecords.find((s) => s._id === r._id)));
+      setSelectedRecords([]);
+    } catch (err) {
+      console.error("Bulk delete error:", err);
+      alert("Failed to delete selected records.");
+    } finally {
+      setTimeout(() => {
+        setIsDeleting(false);
+        setDeleteProgress(0);
+      }, 1000);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow p-6 relative">
-        <h2 className="text-2xl font-semibold  mb-6 text-red-500">
-          {" "}
-          Shipped Records
-        </h2>
+        <h2 className="text-2xl font-semibold mb-6 text-red-500">Shipped Records</h2>
+
+        {selectedRecords.length > 0 && (
+          <button
+            onClick={deleteSelectedRecords}
+            disabled={isDeleting}
+            className="mb-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition disabled:opacity-50"
+          >
+            Delete Selected ({selectedRecords.length})
+          </button>
+        )}
+
+        {/* Progress Bar */}
+        {isDeleting && (
+          <div className="w-full bg-gray-200 h-4 rounded mb-6 overflow-hidden relative">
+            <div
+              className="bg-blue-500 h-full transition-all duration-300"
+              style={{ width: `${deleteProgress}%` }}
+            />
+            <span className="absolute inset-0 text-center text-sm font-medium text-white leading-4">
+              {deleteProgress}%
+            </span>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
         ) : error ? (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-red-500"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            </div>
+            <p className="text-sm text-red-700">{error}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Sr.No
+                  <th className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      onChange={toggleSelectAll}
+                      checked={selectedRecords.length === shippedRecords.length && shippedRecords.length > 0}
+                    />
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Style Number
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Size
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Color
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Location
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Order Id
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Action
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sr.No</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Style Number</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Color</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order Id</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Added Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {shippedRecords.length > 0 ? (
                   shippedRecords.map((record, i) => (
-                    <tr
-                      key={record.order_id}
-                      className="hover:bg-gray-50 transition-colors duration-150"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {i + 1}
+                    <tr key={record._id} className="hover:bg-gray-50 transition-colors duration-150">
+                      <td className="px-4 py-2">
+                        <input
+                          type="checkbox"
+                          checked={!!selectedRecords.find((r) => r._id === record._id)}
+                          onChange={() => toggleSelect(record)}
+                        />
                       </td>
-                      <td className="px-6 py-4n  whitespace-nowrap text-sm font-medium text-blue-900">
-                        {record.styleNumber}
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{i + 1}</td>
+                      <td className="px-6 py-4 text-sm text-blue-900">{record.styleNumber}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">{record.size}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">{record.color}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">{record.location}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">{record.order_id}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {record.createdAt
+                          ? new Date(record.createdAt).toLocaleString("en-IN", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })
+                          : "-"}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {record.size}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {record.color}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap  text-sm text-gray-500">
-                        {record.location}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {record.order_id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4">
                         <button
-                          onClick={() => deleteShippedRecord({_id:record._id})}
-                          className="bg-red-500 py-2 rounded-2xl text-white hover:bg-red-600 duration-75 cursor-pointer px-4"
+                          onClick={() => deleteShippedRecordById(record._id)}
+                          className="bg-red-500 py-2 px-4 rounded text-white hover:bg-red-600 duration-150"
                         >
                           Delete
                         </button>
@@ -170,10 +183,7 @@ const ShippedRecord = () => {
                   ))
                 ) : (
                   <tr>
-                    <td
-                      colSpan="4"
-                      className="px-6 py-4 text-center text-sm text-gray-500"
-                    >
+                    <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">
                       No records found
                     </td>
                   </tr>

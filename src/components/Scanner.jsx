@@ -308,9 +308,6 @@ const styleNumberRef = useRef(null);
             <option value="Ship">Ship</option>
           </select>
         </div>
-
-      
-
         <div className={`${depart === "" ? "hidden" : "block"} p-2 mb-2`}>
           {depart==="Return" ?
           <form className="flex gap-2 flex-col" onSubmit={handleSubmit}>

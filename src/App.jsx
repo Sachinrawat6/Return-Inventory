@@ -7,6 +7,7 @@ import Navbar from './components/Navbar'
 import ShippedRecord from './components/ShippedRecord'
 import QrScanner from './components/Scanner2'
 import TestQr from './components/TestQr'
+import InventoryTable from './components/InventoryTable'
 
 const App = () => {
   return (
@@ -19,6 +20,7 @@ const App = () => {
     <Route path='/return-table-records' element={<ReturnTableRecords/>}/>
     <Route path='/press-table-records' element={<PressTableRecords/>}/>
     <Route path='/shipped-records' element={<ShippedRecord/>}/>
+    <Route path='/inventory-records' element={<InventoryTable/>}/>
    </Routes>
    </BrowserRouter>
   )
