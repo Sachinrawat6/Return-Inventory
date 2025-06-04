@@ -79,7 +79,7 @@ const InventoryTable = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {inventoryTableRecords.length > 0 ? (
                   inventoryTableRecords.map((record,i) => (
-                    <tr key={record.order_id} className="hover:bg-gray-50 transition-colors duration-150">
+                    <tr key={record.order_id + i} className="hover:bg-gray-50 transition-colors duration-150">
                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {i+1}
                       </td>

@@ -8,6 +8,7 @@ import ShippedRecord from './components/ShippedRecord'
 import QrScanner from './components/Scanner2'
 import TestQr from './components/TestQr'
 import InventoryTable from './components/InventoryTable'
+import Dashboard from './components/Dashboard'
 
 const App = () => {
   return (
@@ -21,6 +22,7 @@ const App = () => {
     <Route path='/press-table-records' element={<PressTableRecords/>}/>
     <Route path='/shipped-records' element={<ShippedRecord/>}/>
     <Route path='/inventory-records' element={<InventoryTable/>}/>
+    <Route path='/dashboard' element={<Dashboard/>}/>
    </Routes>
    </BrowserRouter>
   )
