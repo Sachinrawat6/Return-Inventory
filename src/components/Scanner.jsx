@@ -50,6 +50,7 @@ const QrScanner = () => {
       });
       const data = response.data.data;
       setApiResponse(data);
+      setScanQr("");
 
      
       const post_data_response = await axios.post(departCategory[depart], {
@@ -140,11 +141,14 @@ const QrScanner = () => {
       });
   };
 
+const scanQrRef = useRef(null);
+
   const handleQrScan = (e)=>{
     e.preventDefault();
     setScannedData(scanQr)
     postScanData(scanQr)
     setScanQr("");
+    scanQrRef.current.select();
   }
 
   const stopScanner = () => {
@@ -388,6 +392,7 @@ const styleNumberRef = useRef(null);
           <p className="text-center font-medium ">Scan QR Code</p>
           <form onSubmit={handleQrScan}>
           <input
+          ref={scanQrRef}
           onChange={(e)=>setScanQr(e.target.value)}
           type="number" placeholder="Scan order id..."
           className="border border-gray-200 py-2 px-4 rounded mb-2 outline-blue-400 "
