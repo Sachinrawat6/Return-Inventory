@@ -165,7 +165,7 @@ const Dashboard = () => {
                   filteredRecords.map((record, index) => (
                     <tr
                       key={`${record._id}-${record.source}`}
-                      className="hover:bg-gray-50 transition-colors duration-150"
+                      className={`hover:bg-gray-50 transition-colors duration-15`}
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {index + 1}
@@ -176,8 +176,8 @@ const Dashboard = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {record.size || "-"}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {record.location || "-"}
+                      <td className={`${record.location==="Shipped"? " text-white":""} px-6 py-4 whitespace-nowrap text-sm text-gray-500`}>
+                       <span className={`${record.location==="Shipped"? "bg-red-100  text-red-800":"bg-green-100 text-green-800 "} rounded-2xl py-1 px-4 font-medium`}>{record.location || "-"} </span> 
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

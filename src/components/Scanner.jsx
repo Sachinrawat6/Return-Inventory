@@ -16,6 +16,7 @@ const QrScanner = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [syncOrder,setSyncOrder] = useState([]);
   const [orderId,setOrderId] = useState("");
+  const [scanQr, setScanQr] = useState("");
   const [formData,setFormData]  = useState({
     styleNumber:"",
     size:""
@@ -138,6 +139,13 @@ const QrScanner = () => {
         setError("Failed to start scanner: " + err.message);
       });
   };
+
+  const handleQrScan = (e)=>{
+    e.preventDefault();
+    setScannedData(scanQr)
+    postScanData(scanQr)
+    setScanQr("");
+  }
 
   const stopScanner = () => {
     if (scannerRunning.current && html5QrCodeRef.current) {
@@ -376,24 +384,37 @@ const styleNumberRef = useRef(null);
         }
         </div>
 
-        {error && (
+        <div className={`${depart ? "block" : "hidden"} flex flex-col gap-2`}>
+          <p className="text-center font-medium ">Scan QR Code</p>
+          <form onSubmit={handleQrScan}>
+          <input
+          onChange={(e)=>setScanQr(e.target.value)}
+          type="number" placeholder="Scan order id..."
+          className="border border-gray-200 py-2 px-4 rounded mb-2 outline-blue-400 "
+          />
+          </form>
+        </div>
+
+
+
+        {/* {error && (
           <div
             className={`bg-red-100 text-red-700 p-3 rounded w-full max-w-md text-center mb-4 ${
-              depart === "" || formData.styleNumber.length > 0 ? "hidden" : "block"
+              depart === "" || formData.styleNumber.length > 0 ? "hidden" : "block "
             }`}
           >
             {error}
           </div>
-        )}
-
+        )} */}
+{/* 
         {mode === "camera" && !scannedData && showScanner && (
           <div
             id={qrRegionId}
             className={`${
-              depart === "" || formData.styleNumber.length > 0 ? "hidden" : "block"
+              depart === "" || formData.styleNumber.length > 0 ? "hidden" : " xs:hidden block"
             } w-64 h-64 rounded border border-gray-200 mb-4`}
           ></div>
-        )}
+        )} */}
 
       
 
@@ -481,8 +502,8 @@ const styleNumberRef = useRef(null);
               )}
             </div>
           </div>
-        )}
-
+        )} 
+{/* 
         {scannedData && (
           <button
             onClick={handleScanAgain}
@@ -490,7 +511,7 @@ const styleNumberRef = useRef(null);
           >
             Scan Again
           </button>
-        )}
+        )} */}
       </div>
     </>
   );
