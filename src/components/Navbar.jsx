@@ -62,18 +62,7 @@ const Navbar = () => {
               </NavLink>
               
 
-               <NavLink
-                to="/shipped-records"
-                className={({ isActive }) => 
-                  `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                    isActive 
-                      ? "border-black text-gray-900" 
-                      : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  }`
-                }
-              >
-                Shipped Records
-              </NavLink>
+              
                <NavLink
                 to="/inventory-records"
                 className={({ isActive }) => 
@@ -85,6 +74,18 @@ const Navbar = () => {
                 }
               >
                 Inventory Records
+              </NavLink>
+               <NavLink
+                to="/shipped-records"
+                className={({ isActive }) => 
+                  `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                    isActive 
+                      ? "border-black text-gray-900" 
+                      : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                  }`
+                }
+              >
+                Reset Record
               </NavLink>
                
             </div>

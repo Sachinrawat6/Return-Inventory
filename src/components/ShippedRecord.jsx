@@ -1,8 +1,10 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
+import { FaDownload } from "react-icons/fa6";
 
 const ShippedRecord = () => {
   const [shippedRecords, setShippedRecords] = useState([]);
+  const [products,setProductsData] = useState([])
   const [selectedRecords, setSelectedRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,6 +28,65 @@ const ShippedRecord = () => {
   useEffect(() => {
     fetchShippedRecords();
   }, []);
+   const fetchProducts = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(
+          "https://inventorybackend-m1z8.onrender.com/api/product"
+        );
+        const result = await response.json();
+        setProductsData(result);
+      } catch (error) {
+        setError("Failed to fetch inventory products", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    useEffect(() => {
+      fetchProducts();
+    }, []);
+
+   const downloadCSV = (records) => {
+    const headers = [
+      "DropshipWarehouseId",
+      "Item SkuCode",
+      "InventoryAction",
+      "QtyIncludesBlocked",
+      "Qty",
+      "RackSpace",
+      "Last Purchase Price",
+      "Notes",
+    ];
+
+    const rows = shippedRecords.map((record) => [
+      "22784",
+      `${record.styleNumber}-${
+       record.color==="other"? products.find((p) => p.style_code === record.styleNumber)?.color :
+        record.color
+      }-${record.size}`,
+      "RESET",
+      "",
+      "0",
+      "Intransit",
+      "",
+      "",
+    ]);
+
+    const toCSVRow = (row) => row.map((val) => `"${val}"`).join(",");
+
+    const csvContent = [headers, ...rows].map(toCSVRow).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "UpdateInStockQtyAnd_orLastPurchasePrice.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const toggleSelect = (record) => {
     const exists = selectedRecords.find((r) => r._id === record._id);
@@ -102,6 +163,14 @@ const ShippedRecord = () => {
             Delete Selected ({selectedRecords.length})
           </button>
         )}
+        <div className="flex flex-row-reverse">
+            <button
+                      className="bg-red-500 py-2  mb-4 px-4 flex gap-2 items-center rounded text-white cursor-pointer hover:bg-red-600 duration-75 font-medium"
+                      onClick={downloadCSV}
+                    >
+                      <FaDownload /> Reset Inventory
+                    </button>
+        </div>
 
         {/* Progress Bar */}
         {isDeleting && (
