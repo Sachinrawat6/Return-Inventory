@@ -408,11 +408,9 @@ const QrScanner = () => {
                     <table className="min-w-full text-sm border border-gray-200 rounded-md">
                       <thead>
                         <tr>
-                           <th className="px-4 py-2 border border-gray-100 text-left font-medium ">
-                            Order Id
-                          </th>
+                          
                           <th className="px-4 py-2 border border-gray-100 text-left font-medium ">
-                            Style Number
+                            Style No.
                           </th>
                           <th className="px-4 py-2 border border-gray-100 text-left font-medium ">
                             Size
@@ -433,9 +431,7 @@ const QrScanner = () => {
                       </thead>
                       <tbody>
                         <tr>
-                           <td className="px-4 py-2 border border-gray-100  font-medium">
-                            {apiResponse.order_id || "-"}
-                          </td>
+                          
                           <td className="px-4 py-2 border border-gray-100  font-medium">
                             {apiResponse.style_number || "-"}
                           </td>
