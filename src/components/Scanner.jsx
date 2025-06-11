@@ -88,69 +88,7 @@ const QrScanner = () => {
     }
   };
 
-  useEffect(() => {
-    Html5Qrcode.getCameras()
-      .then((devices) => {
-        if (devices.length === 0) {
-          setError("No camera devices found.");
-        } else {
-          const backCam = devices.find(
-            (device) =>
-              device.label.toLowerCase().includes("back") ||
-              device.label.toLowerCase().includes("environment")
-          );
-          const chosenCam = backCam || devices[0];
-          setCameras([chosenCam]);
-          setSelectedCameraId(chosenCam.id);
-        }
-      })
-      .catch((err) => {
-        setError("Camera access error: " + err.message);
-      });
-
-    return () => stopScanner();
-  }, []);
-
-  useEffect(() => {
-    if (mode === "camera" && selectedCameraId && depart) {
-      startScanner(selectedCameraId);
-    }
-    return () => stopScanner();
-  }, [selectedCameraId, mode, depart]);
-
-  const startScanner = (cameraId) => {
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-    const qrElement = document.getElementById(qrRegionId);
-    if (qrElement) qrElement.innerHTML = ""; // Clear previous instance
-
-    html5QrCodeRef.current = new Html5Qrcode(qrRegionId);
-
-    html5QrCodeRef.current
-      .start(
-        cameraId,
-        config,
-        (decodedText) => {
-          if (!depart) {
-            setError("Please select a department before scanning.");
-            stopScanner();
-            return;
-          }
-
-          setScannedData(decodedText);
-          setShowScanner(false);
-          postScanData(decodedText);
-          stopScanner();
-        },
-
-        () => {}
-      )
-      .then(() => {
-        scannerRunning.current = true;
-      })
-      .catch((err) => {
-        setError("Failed to start scanner: " + err.message);
-      });
-  };
+ 
 
   const scanQrRef = useRef(null);
 
@@ -179,8 +117,7 @@ const QrScanner = () => {
       console.log(post_data_response);
       scanQrRef.current.select();
       scanQrRef.current.focus();
-      setApiResponse(null)
-      setLoading(false)
+      setApiResponse([])
     } catch (error) {
       if (error.response && error.response.status === 409) {
         // Record already exists
@@ -188,55 +125,17 @@ const QrScanner = () => {
       } else {
         setRecordAddedResponse("❌ Failed to add record. Try again.");
       }
-      setApiResponse(null)
-      setLoading(false)
+      scanQrRef.current.focus();
+      scanQrRef.current.value="";
+      setApiResponse([])
     }
     setTimeout(() => {
       setRecordAddedResponse("");
     }, 3000);
   };
 
-  const stopScanner = () => {
-    if (scannerRunning.current && html5QrCodeRef.current) {
-      html5QrCodeRef.current
-        .stop()
-        .then(() => {
-          scannerRunning.current = false;
-          html5QrCodeRef.current.clear();
-        })
-        .catch((err) => {
-          console.warn("Stop error:", err.message);
-        });
-    }
-  };
+  
 
-  const handleScanAgain = () => {
-    setScannedData("");
-    setApiResponse([]);
-    setError("");
-    setShowScanner(true);
-    if (mode === "camera") {
-      setTimeout(() => {
-        startScanner(selectedCameraId);
-      }, 300);
-    }
-  };
-
-  const handleImageUpload = async (e) => {
-    setScannedData("");
-    setError("");
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const qrCode = new Html5Qrcode(qrRegionId);
-    try {
-      const result = await qrCode.scanFile(file, true);
-      setScannedData(result);
-      postScanData(result);
-    } catch (err) {
-      setError("Image scan failed: " + err.message);
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -259,7 +158,7 @@ const QrScanner = () => {
       styleNumber: data.style_number,
       size: data.size,
       channel: data.channel,
-      color: data.color || "other",
+      color: data.color || product?.color,
       location: `${depart} Table`,
       employee_name: data.employee_name || "Checker",
       order_id: data.order_id,
@@ -318,7 +217,7 @@ const QrScanner = () => {
       channel: depart,
       style_number: Number(formData.styleNumber),
       size: formData.size,
-      color: "",
+      color: product?.color || "",
       status: "return table",
       found_in_inventory: false,
     };
@@ -335,6 +234,9 @@ const QrScanner = () => {
       console.log("Failed to sync order ", error);
       setRecordAddedResponse("❌ Failed to sync");
     }
+    setTimeout(() => {
+      setRecordAddedResponse("");
+    }, 2000);
   };
 
   return (
@@ -467,14 +369,14 @@ const QrScanner = () => {
                 onChange={(e) => setScanQr(e.target.value)}
                 type="number"
                 placeholder="Scan order id..."
-                className="border border-gray-100 py-2 w-full px-4 rounded-lg  bg-red-400 mb-2 outline-red-500 "
+                className=" py-2 w-full px-4 rounded-lg  border-2 border-red-200 mb-2 outline-red-500 "
               />
             </form>
           </div>
 
 
 
-          {scannedData && (
+          {scannedData && apiResponse?.order_id && (
             <div className="bg-white rounded-lg overflow-hidden border border-gray-100 w-full mx-auto mb-6">
               <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
                 <h2 className="text-lg font-semibold text-green-400 flex items-center">
@@ -501,11 +403,11 @@ const QrScanner = () => {
                     Order ID
                   </h3>
                   <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                    <p className="break-all font-mono ">{scannedData}</p>
+                    <p className="break-all font-mono ">{apiResponse?.order_id}</p>
                   </div>
                 </div>
 
-                {apiResponse ? (
+                {apiResponse?.order_id ? (
                   <div className="bg-gray-50 p-4 rounded-md border border-gray-200 overflow-x-auto">
                     <h3 className="text-sm font-extrabold mb-3">
                       Product Details
@@ -566,9 +468,7 @@ const QrScanner = () => {
                       </tbody>
                     </table>
                   </div>
-                ) : (
-                  <p className="text-center animate-pulse">Loading data....</p>
-                )}
+                ) : ""}
               </div>
             </div>
           )}
