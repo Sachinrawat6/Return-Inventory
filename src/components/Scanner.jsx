@@ -115,8 +115,8 @@ const QrScanner = () => {
       });
       setRecordAddedResponse(`Record added to ${depart} database.`);
       console.log(post_data_response);
-      scanQrRef.current.select();
       scanQrRef.current.focus();
+      scanQrRef.current.value="";
       setApiResponse([])
     } catch (error) {
       if (error.response && error.response.status === 409) {
@@ -331,7 +331,7 @@ const QrScanner = () => {
                 <input
                   type="submit"
                   value="QC PASS"
-                  className="bg-[#222] text-white w-full py-3 px-4  rounded-lg  outline-none hover:bg-[#333] cursor-pointer"
+                  className="bg-[#222] text-white w-full py-2 px-4  rounded-lg  outline-none hover:bg-[#333] cursor-pointer"
                 />
               </form>
             ) : (
@@ -378,7 +378,7 @@ const QrScanner = () => {
 
           {scannedData && apiResponse?.order_id && (
             <div className="bg-white rounded-lg overflow-hidden border border-gray-100 w-full mx-auto mb-6">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
+              <div className="bg-gray-50 px-4 py-1 border-b border-gray-100">
                 <h2 className="text-lg font-semibold text-green-400 flex items-center">
                   <svg
                     className="w-5 h-5 text-green-400 mr-2"
@@ -398,68 +398,67 @@ const QrScanner = () => {
               </div>
 
               <div className="p-5">
-                <div className="mb-4">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">
-                    Order ID
-                  </h3>
-                  <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                    <p className="break-all font-mono ">{apiResponse?.order_id}</p>
-                  </div>
-                </div>
+               
 
                 {apiResponse?.order_id ? (
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200 overflow-x-auto">
+                  <div className=" text-black p-2 rounded-md border border-gray-200 overflow-x-auto">
                     <h3 className="text-sm font-extrabold mb-3">
                       Product Details
                     </h3>
                     <table className="min-w-full text-sm border border-gray-200 rounded-md">
-                      <thead className="bg-gray-100">
+                      <thead>
                         <tr>
-                          <th className="px-4 py-2 border border-gray-200 text-left font-medium text-gray-500">
+                           <th className="px-4 py-2 border border-gray-100 text-left font-medium ">
+                            Order Id
+                          </th>
+                          <th className="px-4 py-2 border border-gray-100 text-left font-medium ">
                             Style Number
                           </th>
-                          <th className="px-4 py-2 border border-gray-200 text-left font-medium text-gray-500">
+                          <th className="px-4 py-2 border border-gray-100 text-left font-medium ">
                             Size
                           </th>
-                          <th className="px-4 py-2 border border-gray-200 text-left font-medium text-gray-500">
+                          <th className="px-4 py-2 border border-gray-100 text-left font-medium ">
                             Color
                           </th>
-                          <th className="px-4 py-2 border border-gray-200 text-left font-medium text-gray-500">
+                          <th className="px-4 py-2 border border-gray-100 text-left font-medium ">
                             Channel
                           </th>
-                          <th className="px-4 py-2 border border-gray-200 text-left font-medium text-gray-500">
+                          <th className="px-4 py-2 border border-gray-100 text-left font-medium ">
                             Location
                           </th>
-                          <th className="px-4 py-2 border border-gray-200 text-left font-medium text-gray-500">
+                          <th className="px-4 py-2 border border-gray-100 text-left font-medium ">
                             Action
                           </th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td className="px-4 py-2 border border-gray-200 font-medium">
+                           <td className="px-4 py-2 border border-gray-100  font-medium">
+                            {apiResponse.order_id || "-"}
+                          </td>
+                          <td className="px-4 py-2 border border-gray-100  font-medium">
                             {apiResponse.style_number || "-"}
                           </td>
-                          <td className="px-4 py-2 border border-gray-200 font-medium">
+                          <td className="px-4 py-2 border border-gray-100  font-medium">
                             {apiResponse.size || "-"}
                           </td>
-                          <td className="px-4 py-2 border border-gray-200 font-medium">
+                          <td className="px-4 py-2 border border-gray-100  font-medium">
                             {apiResponse.color || "-"}
                           </td>
-                          <td className="px-4 py-2 border border-gray-200 font-medium">
+                          <td className="px-4 py-2 border border-gray-100  font-medium">
                             {apiResponse.channel || "-"}
                           </td>
-                          <td className="px-4 py-2 border border-gray-200 font-medium">
+                          <td className="px-4 py-2 border border-gray-100  font-medium">
                             {depart === "Return"
                               ? "Return Table"
                               : depart === "Press"
                               ? "Press Table"
                               : "Shipped"}
                           </td>
-                          <td className="px-4 py-2 border border-gray-200 font-medium">
+                          <td className="px-4 py-2 border border-gray-50  font-medium">
                             <button
                               onClick={handleQCPass}
-                              className="bg-green-400 hover:bg-green-500 duration-75 ease-in cursor-pointer py-2 px-4 truncate font-medium rounded-md shadow text-green-900"
+                              className="bg-[#222] hover:bg-[#333] duration-75 ease-in cursor-pointer py-2 px-4 truncate font-medium rounded-md shadow text-white"
                             >
                               QC PASS
                             </button>
