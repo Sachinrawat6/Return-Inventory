@@ -22,7 +22,7 @@ const App = () => {
     <Route path='/press-table-records' element={<PressTableRecords/>}/>
     <Route path='/shipped-records' element={<ShippedRecord/>}/>
     <Route path='/inventory-records' element={<InventoryTable/>}/>
-    <Route path='/dashboard' element={<Dashboard/>}/>
+    <Route path='/stock' element={<Dashboard/>}/>
    </Routes>
    </BrowserRouter>
   )

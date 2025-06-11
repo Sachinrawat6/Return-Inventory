@@ -13,7 +13,7 @@ const Navbar = () => {
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                <NavLink
-                to="/dashboard"
+                to="/stock"
                 className={({ isActive }) => 
                   `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                     isActive 
@@ -22,7 +22,7 @@ const Navbar = () => {
                   }`
                 }
               >
-                Dashboard
+                Stocks
               </NavLink>
               <NavLink
                 to="/"
