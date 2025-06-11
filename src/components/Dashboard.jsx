@@ -77,7 +77,7 @@ const Dashboard = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Inventory Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Inventory Stocks</h1>
           <div className="relative w-full md:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
