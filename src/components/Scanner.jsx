@@ -179,6 +179,8 @@ const QrScanner = () => {
       console.log(post_data_response);
       scanQrRef.current.select();
       scanQrRef.current.focus();
+      setApiResponse(null)
+      setLoading(false)
     } catch (error) {
       if (error.response && error.response.status === 409) {
         // Record already exists
@@ -186,6 +188,8 @@ const QrScanner = () => {
       } else {
         setRecordAddedResponse("❌ Failed to add record. Try again.");
       }
+      setApiResponse(null)
+      setLoading(false)
     }
     setTimeout(() => {
       setRecordAddedResponse("");
