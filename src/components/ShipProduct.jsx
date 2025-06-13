@@ -17,6 +17,7 @@ const ShipProduct = () => {
     Inventory: `${BASE_URL}/api/v1/inventory-table/inventory/ship`,
   };
 
+
   const handleShip = async (e) => {
     e.preventDefault();
     try {
@@ -30,11 +31,14 @@ const ShipProduct = () => {
         : location ==="Press" ? { style_number: Number(formData.styleNumber) , Size: formData.size} :  {styleNumber: Number(formData.styleNumber) , size: formData.size};
 
       await axios.post(shippedTo[location], payload);
-
       setResponse(`Product Shipped From ${location} Table`);
+      setFormData({styleNumber:"",size:""})
+      setOrderID("");
     } catch (error) {
       setResponse(error?.message ?"Product already shipped" : "Failed to shipped.");
       console.log(error);
+      setFormData({styleNumber:"",size:""})
+      setOrderID("");
     }
     setTimeout(() => {
       setResponse("");
@@ -64,6 +68,8 @@ const ShipProduct = () => {
       <div className={`${location ? "block" : "hidden"}`}>
         <form className="flex gap-2 mt-6 w-xl" onSubmit={handleShip}>
           <input
+          name="styleNumber"
+          value={formData.styleNumber}
             onChange={(e) =>
               setFormData((prev) => ({
                 ...prev,
@@ -76,6 +82,7 @@ const ShipProduct = () => {
           />
 
           <select
+          value={formData.size}
             onChange={(e) =>
               setFormData((prev) => ({
                 ...prev,
@@ -115,6 +122,7 @@ const ShipProduct = () => {
             className="py-2 w-xl px-4 mt-3  bg-gray-50 rounded-lg outline-gray-300 border border-gray-300"
             type="number"
             placeholder="Scan order id..."
+            value={orderID}
           />
         </form>
       </div>
