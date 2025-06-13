@@ -203,7 +203,7 @@ const QrScanner = () => {
       );
       const response = await axios.post(Ship_POST_API, findAndAddToPressOrShip);
       console.log(response);
-      setRecordAddedResponse("Order id moved to ship");
+      setRecordAddedResponse("");
       setOrderId("");
     } catch (error) {
       console.log(`Failed to Add ${depart} Table `, error);
@@ -346,7 +346,7 @@ const QrScanner = () => {
                   className="border border-gray-200 py-2 px-4 rounded outline-blue-500 "
                   onChange={(e) => setOrderId(e.target.value)}
                   value={orderId}
-                  placeholder="Enter order id..."
+                  placeholder="Scan order id..."
                 />
                 <input
                   type="submit"
@@ -359,7 +359,7 @@ const QrScanner = () => {
 
           <div
             className={`${
-              depart ? "block" : "hidden"
+              depart==="Return" ? "block" : "hidden"
             } flex flex-col mt-20 gap-2 `}
           >
             <p className=" font-medium ">Scan QR Code</p>
