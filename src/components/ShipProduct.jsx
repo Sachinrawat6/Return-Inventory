@@ -1,8 +1,9 @@
 import axios from "axios";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const ShipProduct = () => {
   const [location, setLocation] = useState("");
+  const [product, setProduct] = useState([]);
   const [formData, setFormData] = useState({
     styleNumber: "",
     size: "",
@@ -17,6 +18,24 @@ const ShipProduct = () => {
     Inventory: `${BASE_URL}/api/v1/inventory-table/inventory/ship`,
   };
 
+
+     const handleFetchProduct = async () => {
+      try {
+        const response = await fetch(
+          `https://inventorybackend-m1z8.onrender.com/api/product?style_code=${formData?.styleNumber}`);
+        const data = await response.json();
+        setProduct(data[0]);
+        console.log(data)
+      } catch (error) {
+        console.log("Failed to fetch prodcut details.");
+      
+    };
+     }
+    useEffect(() => {
+      if (formData.styleNumber.toString().length === 5 ) {
+        handleFetchProduct();
+      }
+    }, [formData.styleNumber]);
 
   const handleShip = async (e) => {
     e.preventDefault();
@@ -45,9 +64,19 @@ const ShipProduct = () => {
     }, 3000);
   };
 
+
+
+  
+ 
+
+  
+  
+
   return (
     <div className="container mx-auto mt-4 relative">
-      <div className={` ${response ? "block" : "hidden"} w-md `}>
+      <div className="grid grid-cols-2 gap-4  rounded sm:shadow sm:mt-10 mx-auto p-4">
+        <div className="left">
+            <div className={` ${response ? "block" : "hidden"} w-md `}>
         <p className={` ${response.startsWith("Product Shipped") ? "bg-green-400 text-green-900":"bg-red-300 text-red-800"}  py-2 px-4 absolute left-0 rounded font-medium`}>
           {response}
         </p>
@@ -57,7 +86,7 @@ const ShipProduct = () => {
       </h2>
       <select
         onChange={(e) => setLocation(e.target.value)}
-        className="border border-gray-200 bg-gray-50 py-2 px-4 rounded-lg mt-4 w-xl outline-gray-300"
+        className="border border-gray-200 bg-gray-50 py-2 px-4 rounded-lg w-full mt-4 xs:w-3xl outline-gray-300"
       >
         <option value="">Select Location </option>
         <option value="Return">Return Table </option>
@@ -66,7 +95,7 @@ const ShipProduct = () => {
       </select>
 
       <div className={`${location ? "block" : "hidden"}`}>
-        <form className="flex gap-2 mt-6 w-xl" onSubmit={handleShip}>
+        <form className="flex gap-2 mt-6 xs:w-3xl" onSubmit={handleShip}>
           <input
           name="styleNumber"
           value={formData.styleNumber}
@@ -119,13 +148,32 @@ const ShipProduct = () => {
         >
           <input
             onChange={(e) => setOrderID(e.target.value)}
-            className="py-2 w-xl px-4 mt-3  bg-gray-50 rounded-lg outline-gray-300 border border-gray-300"
+            className="py-2 xs:w-3xl px-4 mt-3 w-full bg-gray-50 rounded-lg outline-gray-300 border border-gray-300"
             type="number"
             placeholder="Scan order id..."
             value={orderID}
           />
         </form>
       </div>
+        </div>
+
+
+        
+           <div
+          className={`right mt-10 ${product?.style_id ? "block":"hidden"}  px-6 rounded-2xl shadow-xs `}
+        >
+          <div className="overflow-hidden ">
+            <iframe
+              // style={{ display: !loading ? "block" : "none" }}
+              className="w-full h-[100vh] -mt-48"
+              src={`https://www.myntra.com/dresses/qurvii/qurvii-flared-sleeves-sequinned-georgette-a-line-midi-dress/${product?.style_id}/buy`}
+              frameborder="0"
+            ></iframe>
+          </div>
+        </div>
+        </div>
+      
+    
     </div>
   );
 };
