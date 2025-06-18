@@ -69,11 +69,12 @@ const ReturnTableRecords = () => {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(
-        "https://inventorybackend-m1z8.onrender.com/api/product"
+      const response = await axios.get(
+        // "https://inventorybackend-m1z8.onrender.com/api/product"
+        "https://inventorybackend-m1z8.onrender.com/api/v1/colors/get-colors"
       );
-      const result = await response.json();
-      setProductsData(result);
+      console.log(response)
+      setProductsData(response.data.data);
     } catch (error) {
       setError("Failed to fetch inventory products", error);
     } finally {

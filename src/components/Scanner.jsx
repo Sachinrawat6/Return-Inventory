@@ -467,15 +467,7 @@ const QrScanner = () => {
               </div>
             </div>
           )}
-          {/* 
-        {scannedData && (
-          <button
-            onClick={handleScanAgain}
-            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
-          >
-            Scan Again
-          </button>
-        )} */}
+         
         </div>
 
         <div

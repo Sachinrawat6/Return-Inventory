@@ -64,14 +64,6 @@ const ShipProduct = () => {
     }, 3000);
   };
 
-
-
-  
- 
-
-  
-  
-
   return (
     <div className="container mx-auto mt-4 relative">
       <div className="grid grid-cols-2 gap-4  rounded sm:shadow sm:mt-10 mx-auto p-4">

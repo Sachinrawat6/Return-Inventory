@@ -32,10 +32,10 @@ const ShippedRecord = () => {
       try {
         setIsLoading(true);
         const response = await fetch(
-          "https://inventorybackend-m1z8.onrender.com/api/product"
+          "https://inventorybackend-m1z8.onrender.com/api/v1/colors/get-colors"
         );
         const result = await response.json();
-        setProductsData(result);
+        setProductsData(result.data);
       } catch (error) {
         setError("Failed to fetch inventory products", error);
       } finally {
@@ -62,8 +62,7 @@ const ShippedRecord = () => {
     const rows = shippedRecords.map((record) => [
       "22784",
       `${record.styleNumber}-${
-       record.color==="other"? products.find((p) => p.style_code === record.styleNumber)?.color :
-        record.color
+        products.find((p) => p.style_code === record.styleNumber)?.color 
       }-${record.size}`,
       "RESET",
       "",
@@ -229,7 +228,9 @@ const ShippedRecord = () => {
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">{i + 1}</td>
                       <td className="px-6 py-4 text-sm text-blue-900">{record.styleNumber}</td>
                       <td className="px-6 py-4 text-sm text-gray-500">{record.size}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{record.color}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">   
+                        {products.find((p)=>p.style_code === record.styleNumber)?.color}
+                        </td>
                       <td className="px-6 py-4 text-sm text-gray-500">{record.location}</td>
                       <td className="px-6 py-4 text-sm text-gray-500">{record.order_id}</td>
                       <td className="px-6 py-4 text-sm text-gray-500">
