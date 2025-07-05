@@ -294,7 +294,7 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">
             Inventory Stocks
           </h1>
-          <div className="flex gap-4">
+          {/* <div className="flex gap-4">
             <select
               className="border border-gray-200 py-2 px-4 cursor-pointer rounded outline-gray-400 accent-emerald-100"
               onChange={(e) => setChannel(e.target.value)}
@@ -332,9 +332,9 @@ const Dashboard = () => {
                 </button>
               </>
             )}
-          </div>
+          </div> */}
 
-          <div className="relative w-full md:w-64">
+          {/* <div className="relative w-full md:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
                 className="h-5 w-5 text-gray-400"
@@ -357,7 +357,7 @@ const Dashboard = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-          </div>
+          </div> */}
         </div>
 
         {loading ? (

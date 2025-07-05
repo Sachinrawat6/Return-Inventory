@@ -281,9 +281,9 @@ const Uploads = () => {
             "Qty", 
             "Brand", 
             "Rack Space",
-            "Press Table", 
-            "Return Table", 
-            "Inventory"
+            "Press", 
+            "Return", 
+            "Inventory Cart"
           ]
         ],
         body: tableData,
@@ -309,12 +309,12 @@ const Uploads = () => {
           4: { cellWidth: 25 },
           5: { cellWidth: 20 },
           6: { cellWidth: 20 },
-          7: { cellWidth: 20 }
+          7: { cellWidth: 35 }
         },
       });
 
       // Save the PDF
-      doc.save(`picklist_report_${new Date().toISOString().slice(0, 10)}.pdf`);
+      doc.save(`${channel}_Picklist${new Date().toISOString().slice(0, 10)}.pdf`);
     });
   });
 };
