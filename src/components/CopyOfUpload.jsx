@@ -13,6 +13,7 @@ const Uploads = () => {
   const [rackSpaceFileName, setRackSpaceFileName] = useState("");
   const [loading, setLoading] = useState(false);
 
+
   const BASE_URL = "https://return-inventory-backend.onrender.com";
   const PressTable_API = `${BASE_URL}/api/v1/press-table/get-records`;
   const ReturnTable_API = `${BASE_URL}/api/v1/return-table/get-records`;
@@ -45,6 +46,9 @@ const Uploads = () => {
         source: "Inventory",
       }));
 
+      
+
+      // const combined = [...pressData, ...returnData, ...inventoryData, ...shipData];
       const combined = [...pressData, ...returnData, ...inventoryData];
       setMergedRecords(combined);
       
@@ -59,6 +63,8 @@ const Uploads = () => {
     fetchAllRecords();
   }, []);
 
+
+  // Handle main CSV file upload
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -77,6 +83,7 @@ const Uploads = () => {
             const size = skuParts[2] || "";
             const styleNumber = parseInt(skuParts[0]) || 0;
 
+            //   intransit counts
             const pressTableCount = mergedRecords.filter(
               (record) =>
                 record.styleNumber === styleNumber &&
@@ -131,6 +138,7 @@ const Uploads = () => {
     });
   };
 
+  // Handle rack space CSV file upload
   const handleRackSpaceFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -161,26 +169,19 @@ const Uploads = () => {
     });
   };
 
-  // Improved merge function to handle duplicate styleNumber+size combinations
+  // Merge data when both files are loaded
   const mergedData = csvData.map((item) => {
-    const matchingRackSpaces = rackSpaceData
-      .filter(rs => rs.styleNumber === item.styleNumber && rs.size === item.size)
-      .map(rs => rs.rackSpace);
+    const matchingRackSpace = rackSpaceData.find(
+      (rs) => rs.styleNumber === item.styleNumber && rs.size === item.size
+    );
 
-    // Get unique rack spaces and prioritize non-N/A values
-    const uniqueRackSpaces = [...new Set(matchingRackSpaces)];
-    const filteredRackSpaces = uniqueRackSpaces.filter(rs => rs !== "N/A");
-    
     return {
       ...item,
-      rackSpace: filteredRackSpaces.length > 0 
-        ? filteredRackSpaces.join(", ") 
-        : uniqueRackSpaces.length > 0 
-          ? uniqueRackSpaces.join(", ")
-          : "N/A"
+      rackSpace: matchingRackSpace ? matchingRackSpace.rackSpace : "N/A",
     };
   });
 
+  // Export to CSV
   const exportToCSV = () => {
     if (mergedData.length === 0) {
       alert("No data to export");
@@ -202,117 +203,127 @@ const Uploads = () => {
   };
 
   const exportToPDF = () => {
-    if (mergedData.length === 0) {
-      alert("No data to export");
-      return;
-    }
+  if (mergedData.length === 0) {
+    alert("No data to export");
+    return;
+  }
 
-    if (rackSpaceData.length === 0) {
-      alert("Please Upload rackSpace file first");
-      return;
-    }
+  if (rackSpaceData.length === 0) {
+    alert("Please Upload rackSpace file first");
+    return;
+  }
 
-    const doc = new jsPDF();
+  // Import jsPDF dynamically to avoid SSR issues
+  import("jspdf").then((jsPDFModule) => {
+    const { default: jsPDF } = jsPDFModule;
+    import("jspdf-autotable").then((autoTableModule) => {
+      const doc = new jsPDF();
 
-    // Add title
-    doc.setFontSize(16);
-    doc.setTextColor(40, 40, 40);
-    doc.text("Pick List Report", 14, 20);
+      // Add title
+      doc.setFontSize(16);
+      doc.setTextColor(40, 40, 40);
+      doc.text("Pick List Report", 14, 20);
 
-    // Add metadata
-    doc.setFontSize(10);
-    doc.text(`Channel: ${channel || "N/A"} | Total : ${csvData.length}`, 14, 30);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 37);
-    doc.text(`Time: ${new Date().toLocaleTimeString()}`, 14, 44);
+      // Add metadata
+      doc.setFontSize(10);
+      doc.text(`Channel: ${channel || "N/A"}`, 14, 30);
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 37);
+      doc.text(`Time: ${new Date().toLocaleTimeString()}`, 14, 44);
 
-    // Sort the data:
-    // 1. Normal items first (ascending order)
-    // 2. Then "intransit" items
-    // 3. Finally "virtual" items at the end
-    const sortedData = [...mergedData].sort((a, b) => {
-      const aIsVirtual = a.rackSpace.toLowerCase().includes("virtual");
-      const bIsVirtual = b.rackSpace.toLowerCase().includes("virtual");
-      
-      const aIsIntransit = a.rackSpace.toLowerCase().includes("intransit");
-      const bIsIntransit = b.rackSpace.toLowerCase().includes("intransit");
-      
-      // Virtual items go to the end
-      if (aIsVirtual && !bIsVirtual) return 1;
-      if (!aIsVirtual && bIsVirtual) return -1;
-      
-      // Intransit items go just before virtual
-      if (aIsIntransit && !bIsIntransit) return 1;
-      if (!aIsIntransit && bIsIntransit) return -1;
-      
-      // Among non-special items, sort by SKU
-      return a.SKU.localeCompare(b.SKU);
+      // Sort the data:
+      // 1. Normal items first (ascending order)
+      // 2. Then "intransit" items
+      // 3. Finally "virtual" items at the end
+      const sortedData = [...mergedData].sort((a, b) => {
+        // Check if either item is "virtual"
+        const aIsVirtual = a.rackSpace.toLowerCase() === "virtual";
+        const bIsVirtual = b.rackSpace.toLowerCase() === "virtual";
+        
+        // Check if either item is "intransit"
+        const aIsIntransit = a.rackSpace.toLowerCase() === "intransit";
+        const bIsIntransit = b.rackSpace.toLowerCase() === "intransit";
+        
+        // Virtual items go to the end
+        if (aIsVirtual && !bIsVirtual) return 1;
+        if (!aIsVirtual && bIsVirtual) return -1;
+        
+        // Among virtual items, sort normally
+        if (aIsVirtual && bIsVirtual) {
+          return a.SKU.localeCompare(b.SKU);
+        }
+        
+        // Intransit items go just before virtual
+        if (aIsIntransit && !bIsIntransit) return 1;
+        if (!aIsIntransit && bIsIntransit) return -1;
+        
+        // Among non-special items, sort by SKU
+        return a.SKU.localeCompare(b.SKU);
+      });
+
+      // Prepare data for the table
+      const tableData = sortedData.map((item, index) => [
+        index + 1,
+        item.SKU,
+        item.QTY,
+        item.Brand,
+        item.rackSpace,
+        item.PressTable,
+        item.ReturnTable,
+        item.Inventory
+      ]);
+
+      // Add table using autoTable
+      autoTableModule.default(doc, {
+        head: [
+          [
+            "Sr.No", 
+            "SKU", 
+            "Qty", 
+            "Brand", 
+            "Rack Space",
+            "Press", 
+            "Return", 
+            "Inventory Cart"
+          ]
+        ],
+        body: tableData,
+        startY: 50,
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: 255,
+          fontStyle: "bold",
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
+        styles: {
+          fontSize: 9,
+          cellPadding: 3,
+          overflow: "linebreak",
+        },
+        columnStyles: {
+          0: { cellWidth: 10 },
+          1: { cellWidth: 40 },
+          2: { cellWidth: 15 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 25 },
+          5: { cellWidth: 20 },
+          6: { cellWidth: 20 },
+          7: { cellWidth: 35 }
+        },
+      });
+
+      // Save the PDF
+      doc.save(`${channel}_Picklist${new Date().toISOString().slice(0, 10)}.pdf`);
     });
-
-    // Prepare data for the table
-    const tableData = sortedData.map((item, index) => [
-      index + 1,
-      item.SKU,
-      item.QTY,
-      item.Brand,
-      `[ ${item.rackSpace} ]`,
-      item.PressTable,
-      item.ReturnTable,
-      item.Inventory
-    ]);
-
-    // Add table using autoTable
-    autoTable(doc, {
-      head: [
-        [
-          "Sr.No", 
-          "SKU", 
-          "Qty", 
-          "Brand", 
-          "Rack Space",
-          "Press", 
-          "Return", 
-          "Cart"
-        ]
-      ],
-      body: tableData,
-      startY: 50,
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: "bold",
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245],
-      },
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-        overflow: "linebreak",
-      },
-      columnStyles: {
-        0: { cellWidth: 10 },
-        1: { cellWidth: 40 },
-        2: { cellWidth: 15 },
-        3: { cellWidth: 20 },
-        4: { cellWidth: 45 },
-        5: { cellWidth: 20 },
-        6: { cellWidth: 20 },
-        7: { cellWidth: 20 }
-      },
-    });
-
-    // Save the PDF
-    doc.save(`${channel}_Picklist_${new Date().toISOString().slice(0, 10)}.pdf`);
-  };
+  });
+};
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         <div className="bg-white shadow rounded-lg overflow-hidden">
-          {/* Header and Upload Section remain the same */}
-          {/* ... */}
-
-           {/* Header */}
+          {/* Header */}
           <div className="bg-gradient-to-r bg-gray-100 px-6 py-4">
             <h1 className="text-2xl font-bold text-gray-700">
               Rack Space Management
@@ -421,17 +432,41 @@ const Uploads = () => {
                       onClick={exportToCSV}
                       className="inline-flex cursor-pointer items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                     >
+                      <svg
+                        className="-ml-1 mr-2 h-5 w-5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
                       Export CSV
                     </button>
                     <button
                       onClick={exportToPDF}
                       disabled={rackSpaceData.length === 0}
-                      className={`${
+                      className={`  ${
                         rackSpaceData.length === 0
-                          ? "cursor-not-allowed bg-red-100 text-red-800"
-                          : "hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 bg-red-600 cursor-pointer text-white"
-                      } inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm`}
+                          ? "cursor-not-allowed bg-red-100 text-red-800 "
+                          : " hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 bg-red-600 cursor-pointer text-white"
+                      }  inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm  `}
                     >
+                      <svg
+                        className="-ml-1 mr-2 h-5 w-5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0v12h8V4H6z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
                       Export Picklist
                     </button>
                   </div>
@@ -439,7 +474,7 @@ const Uploads = () => {
 
                 <div className="overflow-x-auto rounded-lg border border-gray-200">
                   <table className="min-w-full divide-y divide-gray-200">
- <thead className="bg-gray-50">
+                    <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Sr.No
@@ -458,10 +493,7 @@ const Uploads = () => {
                         </th>
                       </tr>
                     </thead>
-
-
-
-                      <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {mergedData.map((item, index) => (
                         <tr key={index} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -494,9 +526,6 @@ const Uploads = () => {
                         </tr>
                       ))}
                     </tbody>
-
-                    {/* Table headers and rows */}
-                    {/* ... */}
                   </table>
                 </div>
               </>
