@@ -1,8 +1,8 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
-import Papa from "papaparse"
+import Papa from "papaparse";
 import jsPDF from "jspdf";
-import autoTable from  "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 const Dashboard = () => {
   const [mergedRecords, setMergedRecords] = useState([]);
@@ -71,7 +71,10 @@ const Dashboard = () => {
       const filtered = mergedRecords.filter(
         (record) =>
           (record.styleNumber &&
-            record.styleNumber.toString().toLowerCase().includes(searchTerm.toLowerCase())) ||
+            record.styleNumber
+              .toString()
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())) ||
           (record.location &&
             record.location.toLowerCase().includes(searchTerm.toLowerCase()))
       );
@@ -79,252 +82,257 @@ const Dashboard = () => {
     }
   }, [searchTerm, mergedRecords]);
 
-//  upload file  
+  //  upload file
 
-const handleFileUpload = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  try {
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: function (results) {
-        try {
-          const filteredData = results.data.map((row) => {
-            const SKU = row["Sku Id"];
-            const skuParts = SKU ? SKU.split("-") : [];
-            const size = skuParts[2] || "";
-            const styleNumberRaw = skuParts[0] || "";
-            const styleNumber = Number(styleNumberRaw);
+    try {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function (results) {
+          try {
+            const filteredData = results.data
+              .map((row) => {
+                const SKU = row["Product Sku Code"];
+                const ListingSkucode = row["Listing Sku Code"];
+                const skuParts = SKU ? SKU.split("-") : [];
+                // const skuParts = ProductSkuCode ? ProductSkuCode.split("-") : [];
+                const size = skuParts[2] || "";
+                const styleNumberRaw = skuParts[0] || "";
+                const styleNumber = Number(styleNumberRaw);
 
-            if (!styleNumber || !size) return null; // Skip malformed rows
+                if (!styleNumber || !size) return null; // Skip malformed rows
 
-            const pressTableCount = mergedRecords.filter(
-              (record) =>
-                record.styleNumber === styleNumber &&
-                record.size === size &&
-                record.location === "Press Table"
-            ).length;
+                const pressTableCount = mergedRecords.filter(
+                  (record) =>
+                    record.styleNumber === styleNumber &&
+                    record.size === size &&
+                    record.location === "Press Table"
+                ).length;
 
-            const returnTableCount = mergedRecords.filter(
-              (record) =>
-                record.styleNumber === styleNumber &&
-                record.size === size &&
-                record.location === "Return Table"
-            ).length;
+                const returnTableCount = mergedRecords.filter(
+                  (record) =>
+                    record.styleNumber === styleNumber &&
+                    record.size === size &&
+                    record.location === "Return Table"
+                ).length;
 
-               const inventoryCartCount = mergedRecords.filter(
-              (record) =>
-               Number(record.styleNumber) === styleNumber &&
-                record.size === size &&
-                record.location.endsWith(" Cart")
-            ).length;
+                const inventoryCartCount = mergedRecords.filter(
+                  (record) =>
+                    Number(record.styleNumber) === styleNumber &&
+                    record.size === size &&
+                    record.location.endsWith(" Cart")
+                ).length;
 
-           
+                const brand =
+                  ListingSkucode?.toString().startsWith("8") ||
+                  ListingSkucode?.toString().startsWith("5")
+                    ? "Qurvii+"
+                    : ListingSkucode?.toString().toLowerCase().startsWith("r")
+                    ? "Roadstar"
+                    : ListingSkucode?.toString().toLowerCase().startsWith("24") ? "Qurvii Desi" : "Qurvii";
 
-            return {
-              SKU,
-              // size,
-              QTY: row["Good"] || "0",
-              rackSpace: row["Rack Space"] || "N/A",
-              PressTable: pressTableCount || '-',
-              ReturnTable: returnTableCount || '-',
-              Inventory: inventoryCartCount || '-',
-            };
-          }).filter(Boolean); // remove null rows
+                return {
+                  SKU,
+                  Brand:brand,
+                  ListingSkucode,
+                  QTY: row["Qty"] || "0",
+                  rackSpace: row["Rack Space"] || "N/A",
+                  PressTable: pressTableCount || "-",
+                  ReturnTable: returnTableCount || "-",
+                  Inventory: inventoryCartCount || "-",
+                };
+              })
+              .filter(Boolean); // remove null rows
 
-          setCsvData(filteredData);
-          console.log(filteredData);
-        } catch (parseError) {
-          console.error("Error processing parsed data:", parseError);
-        }
-      },
-      error: function (error) {
-        console.error("CSV parsing failed:", error);
-      }
+            setCsvData(filteredData);
+            console.log(filteredData);
+          } catch (parseError) {
+            console.error("Error processing parsed data:", parseError);
+          }
+        },
+        error: function (error) {
+          console.error("CSV parsing failed:", error);
+        },
+      });
+    } catch (err) {
+      console.error("File upload failed:", err);
+    }
+  };
+
+  // // download file
+  // const handleDownload = () => {
+  //   // Step 1: Filter rows with rackSpace exactly "intransit" (case-insensitive)
+  //   const intransitData = csvData.filter(row => {
+  //     const value = row.rackSpace || "";
+  //     return value.trim().toLowerCase() === "intransit";
+  //   });
+
+  //   // Step 2: Handle if no such data
+  //   if (intransitData.length === 0) {
+  //     alert("No records found with Rack Space = 'intransit'");
+  //     return;
+  //   }
+
+  //   // Step 3: Convert to CSV and trigger download
+  //   const csv = Papa.unparse(intransitData);
+  //   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  //   const url = URL.createObjectURL(blob);
+
+  //   const link = document.createElement("a");
+  //   link.href = url;
+  //   link.setAttribute("download", "intransit_data.csv");
+  //   document.body.appendChild(link);
+  //   link.click();
+  //   document.body.removeChild(link);
+  // };
+
+  const handleDownload = () => {
+    // Step 1: Filter rows with rackSpace exactly "intransit" (case-insensitive)
+    const intransitData = csvData.filter((row) => {
+      const value = row.rackSpace || "";
+      return value.trim().toLowerCase() === "intransit";
     });
-  } catch (err) {
-    console.error("File upload failed:", err);
-  }
-};
 
+    if (intransitData.length === 0) {
+      alert("No records found with Rack Space = 'intransit'");
+      return;
+    }
 
+    // ✅ Step 2: Sort csvData to push intransit at the end
+    const sortedData = [...csvData].sort((a, b) => {
+      const aIsIntransit = (a.rackSpace || "").toLowerCase() === "intransit";
+      const bIsIntransit = (b.rackSpace || "").toLowerCase() === "intransit";
+      return aIsIntransit - bIsIntransit;
+    });
 
-// // download file 
-// const handleDownload = () => {
-//   // Step 1: Filter rows with rackSpace exactly "intransit" (case-insensitive)
-//   const intransitData = csvData.filter(row => {
-//     const value = row.rackSpace || "";
-//     return value.trim().toLowerCase() === "intransit";
-//   });
+    const csv = Papa.unparse(sortedData);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
 
-//   // Step 2: Handle if no such data
-//   if (intransitData.length === 0) {
-//     alert("No records found with Rack Space = 'intransit'");
-//     return;
-//   }
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "intransit_data.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
+  const handleDownloadPDF = () => {
+    if (csvData.length === 0) {
+      alert("No data available to export");
+      return;
+    }
 
+    const doc = new jsPDF();
 
-//   // Step 3: Convert to CSV and trigger download
-//   const csv = Papa.unparse(intransitData);
-//   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-//   const url = URL.createObjectURL(blob);
+    const columns = [
+      { header: "Sr.No", dataKey: "Sr_No" },
+      { header: "SKU", dataKey: "SKU" },
+      { header: "Qty", dataKey: "QTY" },
+      { header: "Brand", dataKey: "Brand" },
+      { header: "Rack Space", dataKey: "rackSpace" },
+      { header: "Press Table", dataKey: "PressTable" },
+      { header: "Return Table", dataKey: "ReturnTable" },
+      { header: "Inventory Cart", dataKey: "Inventory" },
+    ];
 
-//   const link = document.createElement("a");
-//   link.href = url;
-//   link.setAttribute("download", "intransit_data.csv");
-//   document.body.appendChild(link);
-//   link.click();
-//   document.body.removeChild(link);
-// };
+    // ✅ Sorted csvData: intransit rows at the end
+    const sortedData = [...csvData].sort((a, b) => {
+      const aIsIntransit =
+        (a.rackSpace || "").toLowerCase() === "intransit" &&
+        (a.rackSpace || "").toLowerCase() === "virtual";
+      const bIsIntransit =
+        (b.rackSpace || "").toLowerCase() === "intransit" &&
+        (a.rackSpace || "").toLowerCase() === "virtual";
+      return aIsIntransit - bIsIntransit;
+    });
 
-const handleDownload = () => {
-  // Step 1: Filter rows with rackSpace exactly "intransit" (case-insensitive)
-  const intransitData = csvData.filter(row => {
-    const value = row.rackSpace || "";
-    return value.trim().toLowerCase() === "intransit";
-  });
+    const rows = sortedData.map((row, i) => ({
+      Sr_No: i + 1,
+      SKU: row.SKU,
+      size: row.size,
+      QTY: row.QTY,
+      Brand:row.Brand,
+      PressTable: row.PressTable,
+      ReturnTable: row.ReturnTable,
+      Inventory: row.Inventory,
+      rackSpace: row.rackSpace,
+    }));
 
-  if (intransitData.length === 0) {
-    alert("No records found with Rack Space = 'intransit'");
-    return;
-  }
+    // Add title & metadata
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString("en-IN");
+    const formattedTime = now.toLocaleTimeString("en-IN");
 
-  // ✅ Step 2: Sort csvData to push intransit at the end
-  const sortedData = [...csvData].sort((a, b) => {
-    const aIsIntransit = (a.rackSpace || "").toLowerCase() === "intransit";
-    const bIsIntransit = (b.rackSpace || "").toLowerCase() === "intransit";
-    return aIsIntransit - bIsIntransit;
-  });
+    doc.setFontSize(12);
+    doc.text("Pick List", 14, 15);
 
-  const csv = Papa.unparse(sortedData);
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
+    doc.setFontSize(10);
+    doc.text(`Channel: ${channel}`, 14, 25);
+    doc.text(`Date: ${formattedDate}`, 14, 32);
+    doc.text(`Time: ${formattedTime}`, 14, 39);
 
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", "intransit_data.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+    autoTable(doc, {
+      head: [columns.map((col) => col.header)],
+      body: rows.map((row) => columns.map((col) => row[col.dataKey] || "-")),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [41, 128, 185] },
+      startY: 45,
+    });
 
-
-
-const handleDownloadPDF = () => {
-  if (csvData.length === 0) {
-    alert("No data available to export");
-    return;
-  }
-
-  const doc = new jsPDF();
-
-  const columns = [
-    { header: "Sr.No", dataKey: "Sr_No" },
-    { header: "SKU", dataKey: "SKU" },
-    // { header: "Size", dataKey: "size" },
-    { header: "Qty", dataKey: "QTY" },
-    { header: "Rack Space", dataKey: "rackSpace" },
-    { header: "Press Table", dataKey: "PressTable" },
-    { header: "Return Table", dataKey: "ReturnTable" },
-    { header: "Inventory Cart", dataKey: "Inventory" },
-  ];
-
-  // ✅ Sorted csvData: intransit rows at the end
-  const sortedData = [...csvData].sort((a, b) => {
-    const aIsIntransit = (a.rackSpace || "").toLowerCase() === "intransit";
-    const bIsIntransit = (b.rackSpace || "").toLowerCase() === "intransit";
-    return aIsIntransit - bIsIntransit;
-  });
-
-  const rows = sortedData.map((row, i) => ({
-    Sr_No: i + 1,
-    SKU: row.SKU,
-    size: row.size,
-    QTY: row.QTY,
-    PressTable: row.PressTable,
-    ReturnTable: row.ReturnTable,
-    Inventory: row.Inventory,
-    rackSpace: row.rackSpace,
-  }));
-
-// Add title & metadata
-  const now = new Date();
-  const formattedDate = now.toLocaleDateString("en-IN");
-  const formattedTime = now.toLocaleTimeString("en-IN");
-
-  doc.setFontSize(12);
-  doc.text("Pick List", 14, 15);
-
-  doc.setFontSize(10);
-  doc.text(`Channel: ${channel}`, 14, 25);
-  doc.text(`Date: ${formattedDate}`, 14, 32);
-  doc.text(`Time: ${formattedTime}`, 14, 39);
-
-
-
-
-  autoTable(doc, {
-    head: [columns.map(col => col.header)],
-    body: rows.map(row => columns.map(col => row[col.dataKey] || "-")),
-    styles: { fontSize: 9 },
-    headStyles: { fillColor: [41, 128, 185] },
-    startY:45,
-  });
-
-  doc.save("PickList.pdf");
-};
-
-
-
-
+    doc.save("PickList.pdf");
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Inventory Stocks</h1>
-            <div className="flex gap-4">
-              <select
+          <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">
+            Inventory Stocks
+          </h1>
+          <div className="flex gap-4">
+            <select
               className="border border-gray-200 py-2 px-4 cursor-pointer rounded outline-gray-400 accent-emerald-100"
-              onChange={(e)=>setChannel(e.target.value)}
-
+              onChange={(e) => setChannel(e.target.value)}
               value={channel}
-              >
-                <option value="">Select Channel</option>
-                <option value="Myntra">Myntra </option>
-                <option value="Nykaa">Nykaa </option>
-                <option value="Shopify">Shopify</option>
-                <option value="Tatacliq ">Tatacliq </option>
-                <option value="Ajio">Ajio </option>
-                <option value="Shoppersstop">Shoppersstop</option>
-              </select>
-              <input 
-              style={{display:channel ?"block":"none"}}
+            >
+              <option value="">Select Channel</option>
+              <option value="Myntra">Myntra </option>
+              <option value="Nykaa">Nykaa </option>
+              <option value="Shopify">Shopify</option>
+              <option value="Tatacliq ">Tatacliq </option>
+              <option value="Ajio">Ajio </option>
+              <option value="Shoppersstop">Shoppersstop</option>
+            </select>
+            <input
+              style={{ display: channel ? "block" : "none" }}
               onChange={handleFileUpload}
               accept=".csv"
-              type="file" className="border border-gray-200 py-2 px-4 rounded  cursor-pointer" />
+              type="file"
+              className="border border-gray-200 py-2 px-4 rounded  cursor-pointer"
+            />
 
-             {csvData.length > 0 && (
-  <>
-    <button
-      onClick={handleDownload}
-      className="bg-blue-500 text-white cursor-pointer px-4 py-2 rounded hover:bg-blue-600 mr-2"
-    >
-      Download CSV
-    </button>
-    <button
-      onClick={handleDownloadPDF}
-      className="bg-[#222] text-white cursor-pointer px-4 py-2 rounded hover:bg-[#333]"
-    >
-      Download Picklist 
-    </button>
-  </>
-)}
-
-            </div>
+            {csvData.length > 0 && (
+              <>
+                <button
+                  onClick={handleDownload}
+                  className="bg-blue-500 text-white cursor-pointer px-4 py-2 rounded hover:bg-blue-600 mr-2"
+                >
+                  Download CSV
+                </button>
+                <button
+                  onClick={handleDownloadPDF}
+                  className="bg-[#222] text-white cursor-pointer px-4 py-2 rounded hover:bg-[#333]"
+                >
+                  Download Picklist
+                </button>
+              </>
+            )}
+          </div>
 
           <div className="relative w-full md:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -406,7 +414,9 @@ const handleDownloadPDF = () => {
                       colSpan="6"
                       className="px-6 py-4 whitespace-nowrap text-center text-gray-500"
                     >
-                      {searchTerm ? "No matching records found" : "No data available"}
+                      {searchTerm
+                        ? "No matching records found"
+                        : "No data available"}
                     </td>
                   </tr>
                 ) : (
@@ -424,8 +434,20 @@ const handleDownloadPDF = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {record.size || "-"}
                       </td>
-                      <td className={`${record.location==="Shipped"? " text-white":""} px-6 py-4 whitespace-nowrap text-sm text-gray-500`}>
-                       <span className={`${record.location==="Shipped"? "bg-red-100  text-red-800":"bg-green-100 text-green-800 "} rounded-2xl py-1 px-4 font-medium`}>{record.location || "-"} </span> 
+                      <td
+                        className={`${
+                          record.location === "Shipped" ? " text-white" : ""
+                        } px-6 py-4 whitespace-nowrap text-sm text-gray-500`}
+                      >
+                        <span
+                          className={`${
+                            record.location === "Shipped"
+                              ? "bg-red-100  text-red-800"
+                              : "bg-green-100 text-green-800 "
+                          } rounded-2xl py-1 px-4 font-medium`}
+                        >
+                          {record.location || "-"}{" "}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
@@ -444,13 +466,12 @@ const handleDownloadPDF = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {record.createdAt || record.dateAdded
-                          ? new Date(record.createdAt || record.dateAdded).toLocaleString(
-                              "en-IN",
-                              {
-                                dateStyle: "medium",
-                                timeStyle: "short",
-                              }
-                            )
+                          ? new Date(
+                              record.createdAt || record.dateAdded
+                            ).toLocaleString("en-IN", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })
                           : "-"}
                       </td>
                     </tr>

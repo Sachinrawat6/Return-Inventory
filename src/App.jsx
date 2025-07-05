@@ -10,6 +10,7 @@ import TestQr from './components/TestQr'
 import InventoryTable from './components/InventoryTable'
 import Dashboard from './components/Dashboard'
 import ShipProduct from './components/ShipProduct'
+import Uploads from './components/Uploads'
 
 const App = () => {
   return (
@@ -25,6 +26,8 @@ const App = () => {
     <Route path='/inventory-records' element={<InventoryTable/>}/>
     <Route path='/ship' element={<ShipProduct/>}/>
     <Route path='/stock' element={<Dashboard/>}/>
+    <Route path='/uploads' element={<Uploads/>}/>
+
    </Routes>
    </BrowserRouter>
   )
