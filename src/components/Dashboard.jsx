@@ -96,8 +96,8 @@ const Dashboard = () => {
           try {
             const filteredData = results.data
               .map((row) => {
-                const SKU = row["Product Sku Code"];
-                const ListingSkucode = row["Listing Sku Code"];
+                const SKU = row["Sku Id"];
+                // const ListingSkucode = row["Listing Sku Code"];
                 const skuParts = SKU ? SKU.split("-") : [];
                 // const skuParts = ProductSkuCode ? ProductSkuCode.split("-") : [];
                 const size = skuParts[2] || "";
@@ -127,19 +127,13 @@ const Dashboard = () => {
                     record.location.endsWith(" Cart")
                 ).length;
 
-                const brand =
-                  ListingSkucode?.toString().startsWith("8") ||
-                  ListingSkucode?.toString().startsWith("5")
-                    ? "Qurvii+"
-                    : ListingSkucode?.toString().toLowerCase().startsWith("r")
-                    ? "Roadstar"
-                    : ListingSkucode?.toString().toLowerCase().startsWith("24") ? "Qurvii Desi" : "Qurvii";
+               const brand = SKU?.startsWith("24") ? "Qurvii Desi" : "Qurvii";
 
                 return {
                   SKU,
                   Brand:brand,
-                  ListingSkucode,
-                  QTY: row["Qty"] || "0",
+                  // ListingSkucode,
+                  QTY: row["Good"] || "0",
                   rackSpace: row["Rack Space"] || "N/A",
                   PressTable: pressTableCount || "-",
                   ReturnTable: returnTableCount || "-",
@@ -235,8 +229,8 @@ const Dashboard = () => {
       { header: "Qty", dataKey: "QTY" },
       { header: "Brand", dataKey: "Brand" },
       { header: "Rack Space", dataKey: "rackSpace" },
-      { header: "Press Table", dataKey: "PressTable" },
-      { header: "Return Table", dataKey: "ReturnTable" },
+      { header: "Press ", dataKey: "PressTable" },
+      { header: "Return ", dataKey: "ReturnTable" },
       { header: "Inventory Cart", dataKey: "Inventory" },
     ];
 
@@ -260,7 +254,7 @@ const Dashboard = () => {
       PressTable: row.PressTable,
       ReturnTable: row.ReturnTable,
       Inventory: row.Inventory,
-      rackSpace: row.rackSpace,
+      rackSpace: `[ ${row.rackSpace} ]`
     }));
 
     // Add title & metadata
@@ -294,19 +288,19 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">
             Inventory Stocks
           </h1>
-          {/* <div className="flex gap-4">
+          <div className="flex gap-4">
             <select
               className="border border-gray-200 py-2 px-4 cursor-pointer rounded outline-gray-400 accent-emerald-100"
               onChange={(e) => setChannel(e.target.value)}
               value={channel}
             >
               <option value="">Select Channel</option>
-              <option value="Myntra">Myntra </option>
-              <option value="Nykaa">Nykaa </option>
               <option value="Shopify">Shopify</option>
-              <option value="Tatacliq ">Tatacliq </option>
-              <option value="Ajio">Ajio </option>
-              <option value="Shoppersstop">Shoppersstop</option>
+              {/* <option value="Myntra">Myntra </option> */}
+              {/* <option value="Nykaa">Nykaa </option> */}
+              {/* <option value="Tatacliq ">Tatacliq </option> */}
+              {/* <option value="Ajio">Ajio </option> */}
+              {/* <option value="Shoppersstop">Shoppersstop</option> */}
             </select>
             <input
               style={{ display: channel ? "block" : "none" }}
@@ -332,9 +326,9 @@ const Dashboard = () => {
                 </button>
               </>
             )}
-          </div> */}
+          </div>
 
-          {/* <div className="relative w-full md:w-64">
+          <div className="relative w-full md:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
                 className="h-5 w-5 text-gray-400"
@@ -357,7 +351,7 @@ const Dashboard = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-          </div> */}
+          </div>
         </div>
 
         {loading ? (
