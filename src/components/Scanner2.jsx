@@ -496,9 +496,9 @@ const QrScanner = () => {
     }
     try {
       const response = await axios.post(`${API}/scan`, {
-        user_id: 78,
+        user_id: 1019,
         order_id: parseInt(orderId),
-        user_location_id: 139,
+        user_location_id: 141,
       });
       const data = response.data.data;
       setApiResponse(data);

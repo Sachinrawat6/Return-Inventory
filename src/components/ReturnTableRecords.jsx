@@ -40,31 +40,82 @@ const ReturnTableRecords = () => {
     });
   };
 
-  const sendToPressTable = async () => {
-    if (selectedRecords.length === 0) {
-      alert("No records selected.");
-      return;
-    }
+  // const sendToPressTable = async () => {
+  //   if (selectedRecords.length === 0) {
+  //     alert("No records selected.");
+  //     return;
+  //   }
 
-    setIsMoving(true);
-    setProgress(0);
+  //   setIsMoving(true);
+  //   setProgress(0);
 
-    try {
-      for (let i = 0; i < selectedRecords.length; i++) {
-        await axios.post(`${BASE_URL}/api/v1/press-table/add-record`, selectedRecords[i]);
-        setProgress(((i + 1) / selectedRecords.length) * 100);
+  //   try {
+  //     for (let i = 0; i < selectedRecords.length; i++) {
+  //       await axios.post(`${BASE_URL}/api/v1/press-table/add-record`, selectedRecords[i]);
+  //       setProgress(((i + 1) / selectedRecords.length) * 100);
+  //     }
+
+  //     alert("✅ Selected records sent to Press Table.");
+  //     setSelectedRecords([]);
+  //     fetchReturnTableRecords();
+  //   } catch (error) {
+  //     console.error("Error sending to Press Table:", error);
+  //     alert("❌ Failed to send records to Press Table.");
+  //   } finally {
+  //     setIsMoving(false);
+  //   }
+  // };
+
+const sendToPressTable = async () => {
+  if (selectedRecords.length === 0) {
+    alert("No records selected.");
+    return;
+  }
+
+  setIsMoving(true);
+  setProgress(0);
+
+  try {
+    // 1. Fetch existing records correctly
+    const response = await axios.get(
+      "https://return-inventory-backend.onrender.com/api/v1/press-table/get-records"
+    );
+
+    const existingRecords = response.data.data || []; // use response.data.data
+    const existingOrderIds = new Set(existingRecords.map(record => record.order_id));
+
+    let movedCount = 0;
+
+    // 2. Loop through selectedRecords
+    for (let i = 0; i < selectedRecords.length; i++) {
+      const record = selectedRecords[i];
+
+      // 3. Skip if order_id already exists
+      if (existingOrderIds.has(record.order_id)) {
+        continue;
       }
 
-      alert("✅ Selected records sent to Press Table.");
-      setSelectedRecords([]);
-      fetchReturnTableRecords();
-    } catch (error) {
-      console.error("Error sending to Press Table:", error);
-      alert("❌ Failed to send records to Press Table.");
-    } finally {
-      setIsMoving(false);
+      // 4. Send to Press Table
+      await axios.post(
+        "https://return-inventory-backend.onrender.com/api/v1/press-table/add-record",
+        record
+      );
+      movedCount++;
+
+      setProgress(((i + 1) / selectedRecords.length) * 100);
     }
-  };
+
+    alert(`✅ ${movedCount} records sent to Press Table.\nDuplicates were skipped.`);
+    setSelectedRecords([]);
+    fetchReturnTableRecords();
+  } catch (error) {
+    console.error("Error sending to Press Table:", error);
+    alert("❌ Failed to send records to Press Table.");
+  } finally {
+    setIsMoving(false);
+  }
+};
+
 
   const fetchProducts = async () => {
     try {
