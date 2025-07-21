@@ -11,6 +11,7 @@ import InventoryTable from './components/InventoryTable'
 import Dashboard from './components/Dashboard'
 import ShipProduct from './components/ShipProduct'
 import Uploads from './components/Uploads'
+import PicklistScanner from './components/PicklistScanner'
 
 const App = () => {
   return (
@@ -27,6 +28,7 @@ const App = () => {
     <Route path='/ship' element={<ShipProduct/>}/>
     <Route path='/stock' element={<Dashboard/>}/>
     <Route path='/uploads' element={<Uploads/>}/>
+    <Route path='/scan-picklist' element={<PicklistScanner/>}/>
 
    </Routes>
    </BrowserRouter>

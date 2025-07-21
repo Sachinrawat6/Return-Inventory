@@ -3,6 +3,8 @@ import axios from "axios";
 import Papa from "papaparse";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import JsBarcode from "jsbarcode"; // Add this import
+
 
 const Uploads = () => {
   const [csvData, setCsvData] = useState([]);
@@ -12,6 +14,11 @@ const Uploads = () => {
   const [fileName, setFileName] = useState("");
   const [rackSpaceFileName, setRackSpaceFileName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [picklistId, setPicklistId] = useState(null);
+  const [syncCompleted, setSyncCompleted] = useState(false); // New state to track sync completion
 
   const BASE_URL = "https://return-inventory-backend.onrender.com";
   const PressTable_API = `${BASE_URL}/api/v1/press-table/get-records`;
@@ -47,7 +54,6 @@ const Uploads = () => {
 
       const combined = [...pressData, ...returnData, ...inventoryData];
       setMergedRecords(combined);
-      
     } catch (error) {
       console.error("Failed to fetch records", error);
     } finally {
@@ -59,11 +65,16 @@ const Uploads = () => {
     fetchAllRecords();
   }, []);
 
+  const generatePicklistId = () => {
+    return Math.floor(10000 + Math.random() * 90000);
+  };
+
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setFileName(file.name);
     setLoading(true);
+    setSyncCompleted(false); // Reset sync status when new file is uploaded
 
     Papa.parse(file, {
       header: true,
@@ -136,6 +147,7 @@ const Uploads = () => {
     if (!file) return;
     setRackSpaceFileName(file.name);
     setLoading(true);
+    setSyncCompleted(false); // Reset sync status when new file is uploaded
 
     Papa.parse(file, {
       header: true,
@@ -161,23 +173,24 @@ const Uploads = () => {
     });
   };
 
-  // Improved merge function to handle duplicate styleNumber+size combinations
   const mergedData = csvData.map((item) => {
     const matchingRackSpaces = rackSpaceData
-      .filter(rs => rs.styleNumber === item.styleNumber && rs.size === item.size)
-      .map(rs => rs.rackSpace);
+      .filter(
+        (rs) => rs.styleNumber === item.styleNumber && rs.size === item.size
+      )
+      .map((rs) => rs.rackSpace);
 
-    // Get unique rack spaces and prioritize non-N/A values
     const uniqueRackSpaces = [...new Set(matchingRackSpaces)];
-    const filteredRackSpaces = uniqueRackSpaces.filter(rs => rs !== "N/A");
-    
+    const filteredRackSpaces = uniqueRackSpaces.filter((rs) => rs !== "N/A");
+
     return {
       ...item,
-      rackSpace: filteredRackSpaces.length > 0 
-        ? filteredRackSpaces.join(", ") 
-        : uniqueRackSpaces.length > 0 
+      rackSpace:
+        filteredRackSpaces.length > 0
+          ? filteredRackSpaces.join(", ")
+          : uniqueRackSpaces.length > 0
           ? uniqueRackSpaces.join(", ")
-          : "N/A"
+          : "N/A",
     };
   });
 
@@ -201,7 +214,106 @@ const Uploads = () => {
     document.body.removeChild(link);
   };
 
-  const exportToPDF = () => {
+  // const exportToPDF = () => {
+  //   if (mergedData.length === 0) {
+  //     alert("No data to export");
+  //     return;
+  //   }
+
+  //   if (rackSpaceData.length === 0) {
+  //     alert("Please Upload rackSpace file first");
+  //     return;
+  //   }
+
+  //   const doc = new jsPDF();
+
+  //   doc.setFontSize(16);
+  //   doc.setTextColor(40, 40, 40);
+  //   doc.text("Pick List Report", 14, 20);
+
+  //   doc.setFontSize(10);
+  //   doc.text(
+  //     `Channel: ${channel || "N/A"} | Total : ${csvData.length}`,
+  //     14,
+  //     30
+  //   );
+  //   doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 37);
+  //   doc.text(`Time: ${new Date().toLocaleTimeString()}`, 14, 44);
+
+  //   const sortedData = [...mergedData].sort((a, b) => {
+  //     const aIsVirtual = a.rackSpace.toLowerCase().includes("virtual");
+  //     const bIsVirtual = b.rackSpace.toLowerCase().includes("virtual");
+
+  //     const aIsIntransit = a.rackSpace.toLowerCase().includes("intransit");
+  //     const bIsIntransit = b.rackSpace.toLowerCase().includes("intransit");
+
+  //     if (aIsVirtual && !bIsVirtual) return 1;
+  //     if (!aIsVirtual && bIsVirtual) return -1;
+
+  //     if (aIsIntransit && !bIsIntransit) return 1;
+  //     if (!aIsIntransit && bIsIntransit) return -1;
+
+  //     return a.SKU.localeCompare(b.SKU);
+  //   });
+
+  //   const tableData = sortedData.map((item, index) => [
+  //     index + 1,
+  //     item.SKU,
+  //     item.QTY,
+  //     item.Brand,
+  //     `[ ${item.rackSpace} ]`,
+  //     item.PressTable,
+  //     item.ReturnTable,
+  //     item.Inventory,
+  //   ]);
+
+  //   autoTable(doc, {
+  //     head: [
+  //       [
+  //         "Sr.No",
+  //         "SKU",
+  //         "Qty",
+  //         "Brand",
+  //         "Rack Space",
+  //         "Press",
+  //         "Return",
+  //         "Cart",
+  //       ],
+  //     ],
+  //     body: tableData,
+  //     startY: 50,
+  //     headStyles: {
+  //       fillColor: [41, 128, 185],
+  //       textColor: 255,
+  //       fontStyle: "bold",
+  //     },
+  //     alternateRowStyles: {
+  //       fillColor: [245, 245, 245],
+  //     },
+  //     styles: {
+  //       fontSize: 9,
+  //       cellPadding: 3,
+  //       overflow: "linebreak",
+  //     },
+  //     columnStyles: {
+  //       0: { cellWidth: 10 },
+  //       1: { cellWidth: 40 },
+  //       2: { cellWidth: 15 },
+  //       3: { cellWidth: 20 },
+  //       4: { cellWidth: 45 },
+  //       5: { cellWidth: 20 },
+  //       6: { cellWidth: 20 },
+  //       7: { cellWidth: 20 },
+  //     },
+  //   });
+
+  //   doc.save(
+  //     `${channel}_Picklist_${new Date().toISOString().slice(0, 10)}.pdf`
+  //   );
+  // };
+
+
+   const exportToPDF = () => {
     if (mergedData.length === 0) {
       alert("No data to export");
       return;
@@ -219,32 +331,48 @@ const Uploads = () => {
     doc.setTextColor(40, 40, 40);
     doc.text("Pick List Report", 14, 20);
 
+    // Add barcode for picklist ID
+    if (picklistId) {
+      // Create a canvas element for the barcode
+      const canvas = document.createElement("canvas");
+      JsBarcode(canvas, picklistId.toString(), {
+        format: "CODE128",
+        displayValue: true,
+        fontSize: 12,
+        margin: 10,
+        height: 40,
+      });
+      
+      // Convert canvas to image and add to PDF
+      const barcodeData = canvas.toDataURL("image/png");
+      doc.addImage(barcodeData, "PNG", 14, 25, 50, 20);
+    }
+
     // Add metadata
     doc.setFontSize(10);
-    doc.text(`Channel: ${channel || "N/A"} | Total : ${csvData.length}`, 14, 30);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 37);
-    doc.text(`Time: ${new Date().toLocaleTimeString()}`, 14, 44);
+    doc.text(
+      `Channel: ${channel || "N/A"} | Total Items: ${csvData.length}`,
+      70,
+      30
+    );
+    doc.text(`Picklist ID: ${picklistId || "N/A"}`, 70, 37);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 70, 44);
+    doc.text(`Time: ${new Date().toLocaleTimeString()}`, 70, 51);
 
-    // Sort the data:
-    // 1. Normal items first (ascending order)
-    // 2. Then "intransit" items
-    // 3. Finally "virtual" items at the end
+    // Sort the data
     const sortedData = [...mergedData].sort((a, b) => {
       const aIsVirtual = a.rackSpace.toLowerCase().includes("virtual");
       const bIsVirtual = b.rackSpace.toLowerCase().includes("virtual");
-      
+
       const aIsIntransit = a.rackSpace.toLowerCase().includes("intransit");
       const bIsIntransit = b.rackSpace.toLowerCase().includes("intransit");
-      
-      // Virtual items go to the end
+
       if (aIsVirtual && !bIsVirtual) return 1;
       if (!aIsVirtual && bIsVirtual) return -1;
-      
-      // Intransit items go just before virtual
+
       if (aIsIntransit && !bIsIntransit) return 1;
       if (!aIsIntransit && bIsIntransit) return -1;
-      
-      // Among non-special items, sort by SKU
+
       return a.SKU.localeCompare(b.SKU);
     });
 
@@ -257,25 +385,25 @@ const Uploads = () => {
       `[ ${item.rackSpace} ]`,
       item.PressTable,
       item.ReturnTable,
-      item.Inventory
+      item.Inventory,
     ]);
 
     // Add table using autoTable
     autoTable(doc, {
       head: [
         [
-          "Sr.No", 
-          "SKU", 
-          "Qty", 
-          "Brand", 
+          "Sr.No",
+          "SKU",
+          "Qty",
+          "Brand",
           "Rack Space",
-          "Press", 
-          "Return", 
-          "Cart"
-        ]
+          "Press",
+          "Return",
+          "Cart",
+        ],
       ],
       body: tableData,
-      startY: 50,
+      startY: 60, // Adjusted to make space for barcode
       headStyles: {
         fillColor: [41, 128, 185],
         textColor: 255,
@@ -297,41 +425,104 @@ const Uploads = () => {
         4: { cellWidth: 45 },
         5: { cellWidth: 20 },
         6: { cellWidth: 20 },
-        7: { cellWidth: 20 }
+        7: { cellWidth: 20 },
       },
     });
 
     // Save the PDF
-    doc.save(`${channel}_Picklist_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(
+      `${channel}_Picklist_${picklistId || new Date().toISOString().slice(0, 10)}.pdf`
+    );
+  };
+
+  
+  const syncPicklistToNocoDb = async () => {
+    if (!channel) {
+      alert("Please select a channel");
+      return;
+    }
+
+    if (mergedData.length === 0) {
+      alert("No merged data to sync");
+      return;
+    }
+
+    setSyncing(true);
+    setSyncProgress(0);
+    setShowSuccess(false);
+    const newPicklistId = generatePicklistId();
+    setPicklistId(newPicklistId);
+
+    const payload = mergedData.map((item) => ({
+      style_number: item.styleNumber,
+      size: item.size,
+      channel,
+      picklist_id: newPicklistId,
+      brand: item.Brand
+    }));
+
+    try {
+      const ACCESS_TOKEN = "-0XAccEvsn8koGW5MKQ79LoPj07lxk_1ldqDmuv1";
+      const url = "https://app.nocodb.com/api/v2/tables/mdlwurhlg833g00/records";
+
+      // Simulate progress
+      const totalItems = payload.length;
+      let processed = 0;
+      
+      const batchSize = 10;
+      for (let i = 0; i < payload.length; i += batchSize) {
+        const batch = payload.slice(i, i + batchSize);
+        await axios.post(url, batch, {
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            "xc-token": ACCESS_TOKEN,
+          },
+        });
+        
+        processed += batch.length;
+        setSyncProgress(Math.round((processed / totalItems) * 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      setShowSuccess(true);
+      setSyncCompleted(true); // Mark sync as completed
+      setTimeout(() => setShowSuccess(false), 5000);
+    } catch (error) {
+      console.error("❌ Failed to sync to NocoDB", error);
+      alert("Error syncing data to NocoDB");
+    } finally {
+      setSyncing(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         <div className="bg-white shadow rounded-lg overflow-hidden">
-          {/* Header and Upload Section remain the same */}
-          {/* ... */}
-
-           {/* Header */}
-          <div className="bg-gradient-to-r bg-gray-100 px-6 py-4">
-            <h1 className="text-2xl font-bold text-gray-700">
-              Rack Space Management
+          {/* Header */}
+          <div className="bg-gray-100 p-10 py-4">
+            <h1 className="text-2xl font-bold ">
+              Order synchronization & Picklist Generation 
             </h1>
-            <p className="text-gray-600">
+            <p className="text-black">
               Upload and manage inventory rack spaces
             </p>
           </div>
 
           {/* Upload Section */}
           <div className="p-6 border-b border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 truncate gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Channel
                 </label>
                 <select
                   className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  onChange={(e) => setChannel(e.target.value)}
+                  onChange={(e) => {
+                    setChannel(e.target.value);
+                    setSyncCompleted(false); // Reset sync status when channel changes
+                  }}
                   value={channel}
                 >
                   <option value="">Select Channel</option>
@@ -362,7 +553,9 @@ const Uploads = () => {
                         />
                         <label
                           htmlFor="file-upload"
-                          className={`block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm cursor-pointer ${
+                          className={`block w-full px-4 py-2 border ${
+                            fileName ? "border-green-500" : "border-gray-300"
+                          } rounded-md shadow-sm cursor-pointer ${
                             loading
                               ? "bg-gray-100"
                               : "bg-white hover:bg-gray-50"
@@ -388,7 +581,9 @@ const Uploads = () => {
                         />
                         <label
                           htmlFor="rack-space-upload"
-                          className={`block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm cursor-pointer ${
+                          className={`block w-full px-4 py-2 border ${
+                            rackSpaceFileName ? "border-green-500" : "border-gray-300"
+                          } rounded-md shadow-sm cursor-pointer ${
                             loading
                               ? "bg-gray-100"
                               : "bg-white hover:bg-gray-50"
@@ -402,128 +597,259 @@ const Uploads = () => {
                 )}
               </div>
             </div>
-          </div>
 
-          {/* Data Section */}
-          <div className="p-6">
-            {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-              </div>
-            ) : mergedData.length > 0 ? (
-              <>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    Inventory Data
-                  </h2>
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={exportToCSV}
-                      className="inline-flex cursor-pointer items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    >
-                      Export CSV
-                    </button>
-                    <button
-                      onClick={exportToPDF}
-                      disabled={rackSpaceData.length === 0}
-                      className={`${
-                        rackSpaceData.length === 0
-                          ? "cursor-not-allowed bg-red-100 text-red-800"
-                          : "hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 bg-red-600 cursor-pointer text-white"
-                      } inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm`}
-                    >
-                      Export Picklist
-                    </button>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto rounded-lg border border-gray-200">
-                  <table className="min-w-full divide-y divide-gray-200">
- <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Sr.No
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          SKU
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Qty
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Brand
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Rack Space
-                        </th>
-                      </tr>
-                    </thead>
-
-
-
-                      <tbody className="bg-white divide-y divide-gray-200">
-                      {mergedData.map((item, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {index + 1}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {item.SKU}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.QTY}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.Brand}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                              className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                item.rackSpace.toLowerCase() === "intransit"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : item.rackSpace.toLowerCase() === "virtual"
-                                  ? "bg-purple-100 text-purple-800"
-                                  : item.rackSpace === "N/A"
-                                  ? "bg-gray-100 text-gray-800"
-                                  : "bg-green-100 text-green-800"
-                              }`}
-                            >
-                              {item.rackSpace}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-
-                    {/* Table headers and rows */}
-                    {/* ... */}
-                  </table>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <svg
-                  className="mx-auto h-12 w-12 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+            {/* Sync Button with Progress */}
+            {channel && (fileName || rackSpaceFileName) && (rackSpaceFileName) && (
+              <div className={` ${syncCompleted ? "hidden":"block"} mt-6`}>
+                <button
+                  onClick={syncPicklistToNocoDb}
+                  disabled={syncing || mergedData.length === 0}
+                  className={`w-full md:w-auto px-6 py-3 rounded-md shadow-sm text-white font-medium ${
+                    syncing || mergedData.length === 0
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  No data
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Upload CSV files to get started
-                </p>
+                  {syncing ? "Syncing..." : "Sync Orders to NocoDB"}
+                </button>
+
+                {syncing && (
+                  <div className="mt-4">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-700">
+                        Sync Progress
+                      </span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {syncProgress}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full"
+                        style={{ width: `${syncProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+
+                {showSuccess && (
+                  <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                    <div className="flex items-center">
+                      <svg
+                        className="h-5 w-5 text-green-500 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span>
+                        Successfully synced Picklist ID {picklistId} to NocoDB!
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
+
+          {/* Data Section - Only show after successful sync */}
+          {syncCompleted ? (
+            <div className="p-6">
+              {loading ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : mergedData.length > 0 ? (
+                <>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">
+                      Inventory Data (Picklist ID: {picklistId})
+                    </h2>
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={exportToCSV}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      >
+                        <svg
+                          className="h-4 w-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                        Export CSV
+                      </button>
+                      <button
+                        onClick={exportToPDF}
+                        disabled={rackSpaceData.length === 0}
+                        className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${
+                          rackSpaceData.length === 0
+                            ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                            : "bg-red-600 hover:bg-red-700 text-white"
+                        } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500`}
+                      >
+                        <svg
+                          className="h-4 w-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"
+                          />
+                        </svg>
+                        Export Picklist
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Sr.No
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            SKU
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Qty
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Brand
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Rack Space
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Press Table
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Return Table
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cart
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {mergedData.map((item, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {index + 1}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {item.SKU}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {item.QTY}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {item.Brand}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  item.rackSpace.toLowerCase() === "intransit"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : item.rackSpace.toLowerCase() === "virtual"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : item.rackSpace === "N/A"
+                                    ? "bg-gray-100 text-gray-800"
+                                    : "bg-green-100 text-green-800"
+                                }`}
+                              >
+                                {item.rackSpace}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
+                              {item.PressTable}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
+                              {item.ReturnTable}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
+                              {item.Inventory}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    No data available
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {channel
+                      ? "Upload CSV files to view inventory data"
+                      : "Select a channel and upload CSV files to get started"}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Show this before sync is completed
+            <div className="p-6 text-center">
+              <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-blue-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-blue-700">
+                      {channel && (fileName || rackSpaceFileName)
+                        ? "Please sync your data to view records and export options"
+                        : "Please select a channel and upload CSV files to get started"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
