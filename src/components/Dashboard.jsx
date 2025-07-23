@@ -11,6 +11,12 @@ const Dashboard = () => {
   const [csvData, setCsvData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [channel, setChannel] = useState("");
+  const [picklistId, setPicklistId] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [syncCompleted, setSyncCompleted] = useState(false);
+  const [mergedData, setMergedData] = useState([]);
 
   const BASE_URL = "https://return-inventory-backend.onrender.com";
   const PressTable_API = `${BASE_URL}/api/v1/press-table/get-records`;
@@ -22,11 +28,10 @@ const Dashboard = () => {
     try {
       setLoading(true);
 
-      const [pressRes, returnRes, inventoryRes, shipRes] = await Promise.all([
+      const [pressRes, returnRes, inventoryRes] = await Promise.all([
         axios.get(PressTable_API),
         axios.get(ReturnTable_API),
         axios.get(Inventory_API),
-        axios.get(Ship_API),
       ]);
 
       const pressData = (pressRes.data.data || []).map((item) => ({
@@ -44,12 +49,6 @@ const Dashboard = () => {
         source: "Inventory",
       }));
 
-      // const shipRaw = shipRes.data.data || shipRes.data || [];
-      // const shipData = Array.isArray(shipRaw)
-      //   ? shipRaw.map((item) => ({ ...item, source: "Ship" }))
-      //   : [];
-
-      // const combined = [...pressData, ...returnData, ...inventoryData, ...shipData];
       const combined = [...pressData, ...returnData, ...inventoryData];
       setMergedRecords(combined);
       setFilteredRecords(combined);
@@ -82,110 +81,75 @@ const Dashboard = () => {
     }
   }, [searchTerm, mergedRecords]);
 
-  //  upload file
-
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    try {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: function (results) {
-          try {
-            const filteredData = results.data
-              .map((row) => {
-                const SKU = row["Sku Id"];
-                // const ListingSkucode = row["Listing Sku Code"];
-                const skuParts = SKU ? SKU.split("-") : [];
-                // const skuParts = ProductSkuCode ? ProductSkuCode.split("-") : [];
-                const size = skuParts[2] || "";
-                const styleNumberRaw = skuParts[0] || "";
-                const styleNumber = Number(styleNumberRaw);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function (results) {
+        try {
+          const filteredData = results.data
+            .map((row) => {
+              const SKU = row["Sku Id"];
+              const skuParts = SKU ? SKU.split("-") : [];
+              const size = skuParts[2] || "";
+              const styleNumberRaw = skuParts[0] || "";
+              const styleNumber = Number(styleNumberRaw);
 
-                if (!styleNumber || !size) return null; // Skip malformed rows
+              if (!styleNumber || !size) return null;
 
-                const pressTableCount = mergedRecords.filter(
-                  (record) =>
-                    record.styleNumber === styleNumber &&
-                    record.size === size &&
-                    record.location === "Press Table"
-                ).length;
+              const pressTableCount = mergedRecords.filter(
+                (record) =>
+                  record.styleNumber === styleNumber &&
+                  record.size === size &&
+                  record.location === "Press Table"
+              ).length;
 
-                const returnTableCount = mergedRecords.filter(
-                  (record) =>
-                    record.styleNumber === styleNumber &&
-                    record.size === size &&
-                    record.location === "Return Table"
-                ).length;
+              const returnTableCount = mergedRecords.filter(
+                (record) =>
+                  record.styleNumber === styleNumber &&
+                  record.size === size &&
+                  record.location === "Return Table"
+              ).length;
 
-                const inventoryCartCount = mergedRecords.filter(
-                  (record) =>
-                    Number(record.styleNumber) === styleNumber &&
-                    record.size === size &&
-                    record.location.endsWith(" Cart")
-                ).length;
+              const inventoryCartCount = mergedRecords.filter(
+                (record) =>
+                  Number(record.styleNumber) === styleNumber &&
+                  record.size === size &&
+                  record.location.endsWith(" Cart")
+              ).length;
 
-               const brand = SKU?.startsWith("24") ? "Qurvii Desi" : "Qurvii";
+              const brand = SKU?.startsWith("24") ? "Qurvii Desi" : "Qurvii";
 
-                return {
-                  SKU,
-                  Brand:brand,
-                  // ListingSkucode,
-                  QTY: row["Good"] || "0",
-                  rackSpace: row["Rack Space"] || "N/A",
-                  PressTable: pressTableCount || "-",
-                  ReturnTable: returnTableCount || "-",
-                  Inventory: inventoryCartCount || "-",
-                };
-              })
-              .filter(Boolean); // remove null rows
+              return {
+                SKU,
+                Brand: brand,
+                QTY: row["Good"] || "0",
+                rackSpace: row["Rack Space"] || "N/A",
+                PressTable: pressTableCount || "-",
+                ReturnTable: returnTableCount || "-",
+                Inventory: inventoryCartCount || "-",
+                styleNumber,
+                size
+              };
+            })
+            .filter(Boolean);
 
-            setCsvData(filteredData);
-            console.log(filteredData);
-          } catch (parseError) {
-            console.error("Error processing parsed data:", parseError);
-          }
-        },
-        error: function (error) {
-          console.error("CSV parsing failed:", error);
-        },
-      });
-    } catch (err) {
-      console.error("File upload failed:", err);
-    }
+          setCsvData(filteredData);
+          setMergedData(filteredData);
+        } catch (parseError) {
+          console.error("Error processing parsed data:", parseError);
+        }
+      },
+      error: function (error) {
+        console.error("CSV parsing failed:", error);
+      },
+    });
   };
 
-  // // download file
-  // const handleDownload = () => {
-  //   // Step 1: Filter rows with rackSpace exactly "intransit" (case-insensitive)
-  //   const intransitData = csvData.filter(row => {
-  //     const value = row.rackSpace || "";
-  //     return value.trim().toLowerCase() === "intransit";
-  //   });
-
-  //   // Step 2: Handle if no such data
-  //   if (intransitData.length === 0) {
-  //     alert("No records found with Rack Space = 'intransit'");
-  //     return;
-  //   }
-
-  //   // Step 3: Convert to CSV and trigger download
-  //   const csv = Papa.unparse(intransitData);
-  //   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  //   const url = URL.createObjectURL(blob);
-
-  //   const link = document.createElement("a");
-  //   link.href = url;
-  //   link.setAttribute("download", "intransit_data.csv");
-  //   document.body.appendChild(link);
-  //   link.click();
-  //   document.body.removeChild(link);
-  // };
-
   const handleDownload = () => {
-    // Step 1: Filter rows with rackSpace exactly "intransit" (case-insensitive)
     const intransitData = csvData.filter((row) => {
       const value = row.rackSpace || "";
       return value.trim().toLowerCase() === "intransit";
@@ -196,7 +160,6 @@ const Dashboard = () => {
       return;
     }
 
-    // ✅ Step 2: Sort csvData to push intransit at the end
     const sortedData = [...csvData].sort((a, b) => {
       const aIsIntransit = (a.rackSpace || "").toLowerCase() === "intransit";
       const bIsIntransit = (b.rackSpace || "").toLowerCase() === "intransit";
@@ -215,6 +178,18 @@ const Dashboard = () => {
     document.body.removeChild(link);
   };
 
+  const generateBarcode = (picklistId) => {
+    const canvas = document.createElement("canvas");
+    JsBarcode(canvas, picklistId, {
+      format: "CODE128",
+      displayValue: true,
+      fontSize: 12,
+      margin: 10,
+      height: 40,
+    });
+    return canvas.toDataURL("image/png");
+  };
+
   const handleDownloadPDF = () => {
     if (csvData.length === 0) {
       alert("No data available to export");
@@ -223,6 +198,27 @@ const Dashboard = () => {
 
     const doc = new jsPDF();
 
+    // Generate barcode
+    const barcodeDataURL = generateBarcode(picklistId);
+
+    // Add title & metadata
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString("en-IN");
+    const formattedTime = now.toLocaleTimeString("en-IN");
+
+    // Add barcode image
+    doc.addImage(barcodeDataURL, 'PNG', 140, 10, 60, 30);
+
+    doc.setFontSize(12);
+    doc.text("Pick List", 14, 15);
+
+    doc.setFontSize(10);
+    doc.text(`Channel: ${channel}`, 14, 25);
+    doc.text(`Date: ${formattedDate}`, 14, 32);
+    doc.text(`Time: ${formattedTime}`, 14, 39);
+    doc.text(`Picklist ID: ${picklistId}`, 14, 46);
+
+    // Table columns and data (same as before)
     const columns = [
       { header: "Sr.No", dataKey: "Sr_No" },
       { header: "SKU", dataKey: "SKU" },
@@ -234,14 +230,9 @@ const Dashboard = () => {
       { header: "Inventory Cart", dataKey: "Inventory" },
     ];
 
-    // ✅ Sorted csvData: intransit rows at the end
     const sortedData = [...csvData].sort((a, b) => {
-      const aIsIntransit =
-        (a.rackSpace || "").toLowerCase() === "intransit" &&
-        (a.rackSpace || "").toLowerCase() === "virtual";
-      const bIsIntransit =
-        (b.rackSpace || "").toLowerCase() === "intransit" &&
-        (a.rackSpace || "").toLowerCase() === "virtual";
+      const aIsIntransit = (a.rackSpace || "").toLowerCase() === "intransit";
+      const bIsIntransit = (b.rackSpace || "").toLowerCase() === "intransit";
       return aIsIntransit - bIsIntransit;
     });
 
@@ -250,35 +241,90 @@ const Dashboard = () => {
       SKU: row.SKU,
       size: row.size,
       QTY: row.QTY,
-      Brand:row.Brand,
+      Brand: row.Brand,
       PressTable: row.PressTable,
       ReturnTable: row.ReturnTable,
       Inventory: row.Inventory,
       rackSpace: `[ ${row.rackSpace} ]`
     }));
 
-    // Add title & metadata
-    const now = new Date();
-    const formattedDate = now.toLocaleDateString("en-IN");
-    const formattedTime = now.toLocaleTimeString("en-IN");
-
-    doc.setFontSize(12);
-    doc.text("Pick List", 14, 15);
-
-    doc.setFontSize(10);
-    doc.text(`Channel: ${channel}`, 14, 25);
-    doc.text(`Date: ${formattedDate}`, 14, 32);
-    doc.text(`Time: ${formattedTime}`, 14, 39);
-
     autoTable(doc, {
       head: [columns.map((col) => col.header)],
       body: rows.map((row) => columns.map((col) => row[col.dataKey] || "-")),
       styles: { fontSize: 9 },
       headStyles: { fillColor: [41, 128, 185] },
-      startY: 45,
+      startY: 55,
     });
 
-    doc.save("PickList.pdf");
+    doc.save(`PickList_${picklistId}.pdf`);
+  };
+
+  const generatePicklistId = () => {
+    const randomId = Math.floor(10000 + Math.random() * 90000).toString();
+    const timestampComponent = Date.now().toString().slice(-2);
+    const uniqueId = (parseInt(randomId.slice(0, 3)) + parseInt(timestampComponent)).toString() +
+      randomId.slice(3) +
+      timestampComponent;
+    return uniqueId.slice(0, 5);
+  };
+
+  const syncPicklistToNocoDb = async () => {
+    if (!channel) {
+      alert("Please select a channel");
+      return;
+    }
+
+    if (mergedData.length === 0) {
+      alert("No merged data to sync");
+      return;
+    }
+
+    setSyncing(true);
+    setSyncProgress(0);
+    setShowSuccess(false);
+    const newPicklistId = generatePicklistId();
+    setPicklistId(newPicklistId);
+
+    const payload = mergedData.map((item) => ({
+      style_number: item.styleNumber,
+      size: item.size,
+      channel,
+      picklist_id: newPicklistId,
+      brand: item.Brand
+    }));
+
+    try {
+      const ACCESS_TOKEN = "-0XAccEvsn8koGW5MKQ79LoPj07lxk_1ldqDmuv1";
+      const url = "https://app.nocodb.com/api/v2/tables/mdlwurhlg833g00/records";
+
+      const totalItems = payload.length;
+      let processed = 0;
+
+      const batchSize = 10;
+      for (let i = 0; i < payload.length; i += batchSize) {
+        const batch = payload.slice(i, i + batchSize);
+        await axios.post(url, batch, {
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            "xc-token": ACCESS_TOKEN,
+          },
+        });
+
+        processed += batch.length;
+        setSyncProgress(Math.round((processed / totalItems) * 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      setShowSuccess(true);
+      setSyncCompleted(true);
+      setTimeout(() => setShowSuccess(false), 5000);
+    } catch (error) {
+      console.error("❌ Failed to sync to NocoDB", error);
+      alert("Error syncing data to NocoDB");
+    } finally {
+      setSyncing(false);
+    }
   };
 
   return (
@@ -288,7 +334,7 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">
             Inventory Stocks
           </h1>
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap">
             <select
               className="border border-gray-200 py-2 px-4 cursor-pointer rounded outline-gray-400 accent-emerald-100"
               onChange={(e) => setChannel(e.target.value)}
@@ -296,25 +342,35 @@ const Dashboard = () => {
             >
               <option value="">Select Channel</option>
               <option value="Shopify">Shopify</option>
-              {/* <option value="Myntra">Myntra </option> */}
-              {/* <option value="Nykaa">Nykaa </option> */}
-              {/* <option value="Tatacliq ">Tatacliq </option> */}
-              {/* <option value="Ajio">Ajio </option> */}
-              {/* <option value="Shoppersstop">Shoppersstop</option> */}
             </select>
-            <input
-              style={{ display: channel ? "block" : "none" }}
-              onChange={handleFileUpload}
-              accept=".csv"
-              type="file"
-              className="border border-gray-200 py-2 px-4 rounded  cursor-pointer"
-            />
 
-            {csvData.length > 0 && (
+            {channel && (
+              <>
+                <input
+                  onChange={handleFileUpload}
+                  accept=".csv"
+                  type="file"
+                  className="border border-gray-200 py-2 px-4 rounded cursor-pointer"
+                />
+
+                {csvData.length > 0 && !syncCompleted && (
+                  <button
+                    onClick={syncPicklistToNocoDb}
+                    disabled={syncing}
+                    className={`bg-green-500 text-white cursor-pointer px-4 py-2 rounded hover:bg-green-600 ${syncing ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                  >
+                    {syncing ? `Syncing... ${syncProgress}%` : 'Sync Orders'}
+                  </button>
+                )}
+              </>
+            )}
+
+            {syncCompleted && (
               <>
                 <button
                   onClick={handleDownload}
-                  className="bg-blue-500 text-white cursor-pointer px-4 py-2 rounded hover:bg-blue-600 mr-2"
+                  className="bg-blue-500 text-white cursor-pointer px-4 py-2 rounded hover:bg-blue-600"
                 >
                   Download CSV
                 </button>
@@ -322,37 +378,43 @@ const Dashboard = () => {
                   onClick={handleDownloadPDF}
                   className="bg-[#222] text-white cursor-pointer px-4 py-2 rounded hover:bg-[#333]"
                 >
-                  Download Picklist
+                  Export PDF
                 </button>
               </>
             )}
-          </div>
 
-          <div className="relative w-full md:w-64">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg
-                className="h-5 w-5 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+            <div className="relative w-full md:w-64">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  className="h-5 w-5 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+              <input
+                type="text"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Search by style or location"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="Search by style or location"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
           </div>
         </div>
+
+        {showSuccess && (
+          <div className="mb-4 p-4 bg-green-100 text-green-800 rounded-lg">
+            Orders synced successfully! Picklist ID: {picklistId}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center items-center py-12">
@@ -363,40 +425,22 @@ const Dashboard = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     #
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Style Number
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Size
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Location
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Source
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Created At
                   </th>
                 </tr>
@@ -404,13 +448,8 @@ const Dashboard = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredRecords.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan="6"
-                      className="px-6 py-4 whitespace-nowrap text-center text-gray-500"
-                    >
-                      {searchTerm
-                        ? "No matching records found"
-                        : "No data available"}
+                    <td colSpan="6" className="px-6 py-4 whitespace-nowrap text-center text-gray-500">
+                      {searchTerm ? "No matching records found" : "No data available"}
                     </td>
                   </tr>
                 ) : (
@@ -428,32 +467,26 @@ const Dashboard = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {record.size || "-"}
                       </td>
-                      <td
-                        className={`${
-                          record.location === "Shipped" ? " text-white" : ""
-                        } px-6 py-4 whitespace-nowrap text-sm text-gray-500`}
-                      >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <span
-                          className={`${
-                            record.location === "Shipped"
-                              ? "bg-red-100  text-red-800"
-                              : "bg-green-100 text-green-800 "
-                          } rounded-2xl py-1 px-4 font-medium`}
+                          className={`${record.location === "Shipped"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-green-100 text-green-800"
+                            } rounded-2xl py-1 px-4 font-medium`}
                         >
-                          {record.location || "-"}{" "}
+                          {record.location || "-"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            record.source === "Press"
-                              ? "bg-blue-100 text-blue-800"
-                              : record.source === "Return"
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${record.source === "Press"
+                            ? "bg-blue-100 text-blue-800"
+                            : record.source === "Return"
                               ? "bg-purple-100 text-purple-800"
                               : record.source === "Inventory"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
+                                ? "bg-green-100 text-green-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
                         >
                           {record.source}
                         </span>
@@ -461,11 +494,11 @@ const Dashboard = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {record.createdAt || record.dateAdded
                           ? new Date(
-                              record.createdAt || record.dateAdded
-                            ).toLocaleString("en-IN", {
-                              dateStyle: "medium",
-                              timeStyle: "short",
-                            })
+                            record.createdAt || record.dateAdded
+                          ).toLocaleString("en-IN", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })
                           : "-"}
                       </td>
                     </tr>
